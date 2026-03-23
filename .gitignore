@@ -1,0 +1,4 @@
+node_modules/
+warkop.db
+warkop.db-shm
+warkop.db-wal

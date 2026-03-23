@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Warkop Urban - Pesan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] },
+          },
+        },
+      };
+    </script>
+    <style>
+      * {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #050505;
+        min-height: 100dvh;
+        overflow-x: hidden;
+      }
+
+      /* Animated mesh background */
+      .mesh-bg {
+        position: fixed; inset: 0; z-index: 0;
+        background:
+          radial-gradient(ellipse 60% 50% at 10% 20%, rgba(234,88,12,0.12) 0%, transparent 50%),
+          radial-gradient(ellipse 50% 60% at 90% 80%, rgba(124,58,237,0.08) 0%, transparent 50%),
+          radial-gradient(ellipse 40% 40% at 50% 50%, rgba(14,165,233,0.05) 0%, transparent 50%);
+        animation: meshShift 12s ease-in-out infinite alternate;
+      }
+      @keyframes meshShift {
+        0% { filter: hue-rotate(0deg); }
+        50% { filter: hue-rotate(15deg); }
+        100% { filter: hue-rotate(-10deg); }
+      }
+
+      /* Grid lines */
+      .grid-lines {
+        position: fixed; inset: 0; z-index: 1;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+        background-size: 50px 50px;
+        mask-image: radial-gradient(ellipse 70% 50% at 50% 40%, rgba(0,0,0,0.5), transparent);
+      }
+
+      /* Glass cards */
+      .glass-card {
+        background: rgba(255,255,255,0.05);
+        backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      /* Gradient text */
+      .gradient-text {
+        background: linear-gradient(135deg, #fb923c, #f97316, #ea580c);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      /* Scrollbar */
+      .custom-scroll::-webkit-scrollbar { width: 3px; }
+      .custom-scroll::-webkit-scrollbar-thumb { background: rgba(234,88,12,0.2); border-radius: 10px; }
+
+      /* Menu item card */
+      .menu-item {
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .menu-item:active:not(.item-disabled) {
+        transform: scale(0.96);
+      }
+      .menu-item:not(.item-disabled):hover {
+        border-color: rgba(234,88,12,0.3) !important;
+        box-shadow: 0 8px 30px rgba(234,88,12,0.12);
+      }
+      .item-disabled {
+        opacity: 0.45;
+        pointer-events: none;
+      }
+
+      /* Category pill */
+      .cat-pill {
+        transition: all 0.3s ease;
+        white-space: nowrap;
+      }
+      .cat-pill.active {
+        background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+        color: white;
+        box-shadow: 0 4px 20px rgba(234,88,12,0.35);
+        border-color: transparent !important;
+      }
+
+      /* Qty button */
+      .qty-btn {
+        transition: all 0.2s ease;
+      }
+      .qty-btn:active {
+        transform: scale(0.85);
+      }
+
+      /* Cart panel */
+      .cart-overlay {
+        position: fixed; inset: 0; z-index: 90;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        opacity: 0; visibility: hidden;
+        transition: all 0.3s ease;
+      }
+      .cart-overlay.show {
+        opacity: 1; visibility: visible;
+      }
+      .cart-panel {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 95;
+        max-height: 85vh;
+        background: rgba(20,20,20,0.98);
+        backdrop-filter: blur(40px);
+        border-top: 1px solid rgba(255,255,255,0.1);
+        border-radius: 24px 24px 0 0;
+        transform: translateY(100%);
+        transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      }
+      .cart-panel.show {
+        transform: translateY(0);
+      }
+
+      /* Floating cart button */
+      .cart-fab {
+        position: fixed; bottom: 24px; right: 20px; z-index: 80;
+        background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+        box-shadow: 0 8px 30px rgba(234,88,12,0.4);
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .cart-fab:active {
+        transform: scale(0.9);
+      }
+      .cart-fab .badge {
+        position: absolute; top: -6px; right: -6px;
+        background: #fff; color: #ea580c;
+        min-width: 22px; height: 22px;
+        border-radius: 11px;
+        font-size: 12px; font-weight: 800;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .cart-fab.bounce {
+        animation: fabBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes fabBounce {
+        0% { transform: scale(1); }
+        40% { transform: scale(1.25); }
+        100% { transform: scale(1); }
+      }
+
+      /* Submit button */
+      .btn-submit {
+        background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+        box-shadow: 0 8px 25px rgba(234,88,12,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+        transition: all 0.3s ease;
+      }
+      .btn-submit:active {
+        transform: translateY(2px) scale(0.98);
+        box-shadow: 0 4px 12px rgba(234,88,12,0.3);
+      }
+      .btn-submit:disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      /* Success overlay */
+      .success-overlay {
+        position: fixed; inset: 0; z-index: 200;
+        background: rgba(5,5,5,0.95);
+        backdrop-filter: blur(20px);
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        opacity: 0; visibility: hidden;
+        transition: all 0.4s ease;
+      }
+      .success-overlay.show {
+        opacity: 1; visibility: visible;
+      }
+
+      /* Success checkmark animation */
+      .checkmark-circle {
+        width: 100px; height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ea580c, #dc2626);
+        display: flex; align-items: center; justify-content: center;
+        animation: checkPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        transform: scale(0);
+      }
+      @keyframes checkPop {
+        0% { transform: scale(0) rotate(-45deg); }
+        100% { transform: scale(1) rotate(0deg); }
+      }
+      .checkmark-circle svg {
+        width: 48px; height: 48px; color: white;
+        stroke-dasharray: 100;
+        stroke-dashoffset: 100;
+        animation: drawCheck 0.5s ease 0.4s forwards;
+      }
+      @keyframes drawCheck {
+        to { stroke-dashoffset: 0; }
+      }
+
+      /* Pulse ring */
+      .pulse-ring {
+        position: absolute;
+        width: 100px; height: 100px;
+        border-radius: 50%;
+        border: 2px solid rgba(234,88,12,0.4);
+        animation: pulseOut 1.2s ease-out 0.3s infinite;
+      }
+      @keyframes pulseOut {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(2.2); opacity: 0; }
+      }
+
+      /* Loading spinner */
+      .spinner {
+        width: 20px; height: 20px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Habis badge */
+      .habis-badge {
+        position: absolute; top: 10px; right: 10px;
+        background: rgba(220,38,38,0.9);
+        color: white; font-size: 11px; font-weight: 700;
+        padding: 2px 10px; border-radius: 20px;
+        text-transform: uppercase; letter-spacing: 0.5px;
+      }
+
+      /* Add to cart animation */
+      @keyframes addPulse {
+        0% { box-shadow: 0 0 0 0 rgba(234,88,12,0.4); }
+        70% { box-shadow: 0 0 0 12px rgba(234,88,12,0); }
+        100% { box-shadow: 0 0 0 0 rgba(234,88,12,0); }
+      }
+      .add-pulse {
+        animation: addPulse 0.5s ease;
+      }
+
+      /* Fade in for items */
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .fade-up {
+        animation: fadeUp 0.5s ease forwards;
+        opacity: 0;
+      }
+
+      /* Hide scrollbar on category scroll */
+      .hide-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+  </head>
+  <body>
+    <div class="mesh-bg"></div>
+    <div class="grid-lines"></div>
+
+    <!-- Main Content -->
+    <div class="relative z-10 pb-28 custom-scroll" style="min-height:100dvh;">
+
+      <!-- Header -->
+      <header class="sticky top-0 z-50 px-4 pt-4 pb-3" style="background: rgba(5,5,5,0.85); backdrop-filter: blur(20px);">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h1 class="text-xl font-800">
+              <span class="gradient-text">Warkop Urban</span>
+            </h1>
+            <p class="text-xs text-white/40 mt-0.5">Self-Order Menu</p>
+          </div>
+          <div id="meja-badge" class="glass-card rounded-2xl px-4 py-2 text-center">
+            <div class="text-[10px] text-white/40 uppercase tracking-wider font-600">Meja</div>
+            <div class="text-2xl font-900 gradient-text leading-tight" id="meja-num">-</div>
+          </div>
+        </div>
+
+        <!-- Category filters -->
+        <div class="flex gap-2 overflow-x-auto hide-scrollbar -mx-1 px-1 pb-1">
+          <button class="cat-pill active glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5"
+                  data-cat="semua" onclick="filterCategory('semua')">
+            Semua
+          </button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5"
+                  data-cat="kopi" onclick="filterCategory('kopi')">
+            ☕ Kopi
+          </button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5"
+                  data-cat="minuman" onclick="filterCategory('minuman')">
+            🧃 Minuman
+          </button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5"
+                  data-cat="makanan" onclick="filterCategory('makanan')">
+            🍜 Makanan
+          </button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5"
+                  data-cat="snack" onclick="filterCategory('snack')">
+            🍩 Snack
+          </button>
+        </div>
+      </header>
+
+      <!-- Menu Grid -->
+      <div id="menu-grid" class="grid grid-cols-2 gap-3 px-4 mt-4">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state" class="hidden flex-col items-center justify-center py-20 px-8 text-center">
+        <div class="text-5xl mb-4">🍽️</div>
+        <p class="text-white/40 text-sm">Tidak ada menu di kategori ini</p>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading-state" class="flex flex-col items-center justify-center py-20">
+        <div class="spinner" style="width:32px;height:32px;border-width:3px;"></div>
+        <p class="text-white/40 text-sm mt-4">Memuat menu...</p>
+      </div>
+    </div>
+
+    <!-- Floating Cart Button -->
+    <button id="cart-fab" class="cart-fab hidden w-14 h-14 rounded-full flex items-center justify-center" onclick="toggleCart()">
+      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/>
+      </svg>
+      <span class="badge" id="cart-badge">0</span>
+    </button>
+
+    <!-- Cart Overlay -->
+    <div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
+
+    <!-- Cart Panel -->
+    <div class="cart-panel" id="cart-panel">
+      <div class="p-5">
+        <!-- Handle bar -->
+        <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5"></div>
+
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-white font-800 text-lg">Keranjang</h2>
+          <button class="text-white/40 text-sm font-600 hover:text-red-400 transition-colors" onclick="clearCart()">
+            Hapus Semua
+          </button>
+        </div>
+
+        <!-- Cart Items -->
+        <div id="cart-items" class="space-y-3 max-h-[40vh] overflow-y-auto custom-scroll pr-1">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Cart empty -->
+        <div id="cart-empty" class="text-center py-8">
+          <div class="text-4xl mb-3">🛒</div>
+          <p class="text-white/30 text-sm">Keranjang masih kosong</p>
+        </div>
+
+        <!-- Total & Submit -->
+        <div id="cart-footer" class="hidden mt-5 pt-4 border-t border-white/10">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-white/60 font-600">Total</span>
+            <span class="text-xl font-900 gradient-text" id="cart-total">Rp 0</span>
+          </div>
+          <button id="btn-submit" class="btn-submit w-full py-4 rounded-2xl text-white font-700 text-base flex items-center justify-center gap-2"
+                  onclick="submitOrder()">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            Kirim Pesanan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div class="success-overlay" id="success-overlay">
+      <div class="relative mb-8">
+        <div class="pulse-ring"></div>
+        <div class="checkmark-circle">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+      </div>
+      <h2 class="text-white text-2xl font-800 mb-2">Pesanan Terkirim!</h2>
+      <p class="text-white/50 text-sm text-center max-w-[260px] leading-relaxed">
+        Pesanan dikirim ke kasir, silakan tunggu. Kami akan segera menyiapkan pesanan Anda.
+      </p>
+      <div class="mt-6 glass-card rounded-2xl px-6 py-3 flex items-center gap-3">
+        <span class="text-white/40 text-sm">Meja</span>
+        <span class="text-xl font-900 gradient-text" id="success-meja">-</span>
+      </div>
+      <button class="mt-8 text-white/40 text-sm font-600 underline underline-offset-4" onclick="resetPage()">
+        Pesan lagi
+      </button>
+    </div>
+
+    <!-- No Meja Error -->
+    <div class="hidden fixed inset-0 z-[300] bg-[#050505] flex-col items-center justify-center text-center p-8" id="no-meja">
+      <div class="text-6xl mb-6">📱</div>
+      <h2 class="text-white text-xl font-800 mb-3">Scan QR di Meja</h2>
+      <p class="text-white/40 text-sm leading-relaxed max-w-[280px]">
+        Silakan scan QR code yang tersedia di meja Anda untuk mulai memesan.
+      </p>
+    </div>
+
+    <script>
+      // ============================
+      // State
+      // ============================
+      let menuData = [];
+      let cart = {};  // { menuId: { id, nama, harga, qty } }
+      let currentCategory = "semua";
+      let mejaNumber = null;
+      let isSubmitting = false;
+
+      const socket = io();
+
+      const CATEGORY_EMOJI = {
+        makanan: "🍜",
+        minuman: "🧃",
+        kopi: "☕",
+        snack: "🍩",
+      };
+
+      // ============================
+      // Init
+      // ============================
+      (function init() {
+        const params = new URLSearchParams(window.location.search);
+        const meja = params.get("meja");
+
+        if (!meja || isNaN(parseInt(meja))) {
+          document.getElementById("no-meja").classList.remove("hidden");
+          document.getElementById("no-meja").classList.add("flex");
+          return;
+        }
+
+        mejaNumber = parseInt(meja);
+        document.getElementById("meja-num").textContent = mejaNumber;
+        document.getElementById("success-meja").textContent = mejaNumber;
+
+        loadMenu();
+      })();
+
+      // ============================
+      // Load Menu
+      // ============================
+      async function loadMenu() {
+        try {
+          const res = await fetch("/api/menu");
+          menuData = await res.json();
+          document.getElementById("loading-state").classList.add("hidden");
+          renderMenu();
+        } catch (e) {
+          document.getElementById("loading-state").innerHTML =
+            '<p class="text-red-400 text-sm">Gagal memuat menu. Coba refresh halaman.</p>';
+        }
+      }
+
+      // ============================
+      // Render Menu
+      // ============================
+      function renderMenu() {
+        const grid = document.getElementById("menu-grid");
+        const empty = document.getElementById("empty-state");
+
+        const filtered = currentCategory === "semua"
+          ? menuData
+          : menuData.filter(m => m.kategori === currentCategory);
+
+        if (filtered.length === 0) {
+          grid.innerHTML = "";
+          empty.classList.remove("hidden");
+          empty.classList.add("flex");
+          return;
+        }
+
+        empty.classList.add("hidden");
+        empty.classList.remove("flex");
+
+        grid.innerHTML = filtered.map((item, i) => {
+          const outOfStock = item.stok <= 0 || !item.tersedia;
+          const inCart = cart[item.id];
+          const emoji = CATEGORY_EMOJI[item.kategori] || "🍽️";
+
+          return `
+            <div class="menu-item glass-card rounded-2xl p-4 relative fade-up ${outOfStock ? 'item-disabled' : ''}"
+                 style="animation-delay: ${i * 0.05}s"
+                 ${!outOfStock ? `onclick="addToCart(${item.id})"` : ""}>
+              ${outOfStock ? '<div class="habis-badge">Habis</div>' : ''}
+              <div class="text-3xl mb-2">${emoji}</div>
+              <h3 class="text-white font-700 text-sm leading-tight mb-1 line-clamp-2">${item.nama}</h3>
+              <p class="text-xs text-white/30 capitalize mb-2">${item.kategori}</p>
+              <div class="flex items-end justify-between">
+                <span class="gradient-text font-800 text-sm">Rp ${item.harga.toLocaleString("id-ID")}</span>
+                ${!outOfStock && inCart ? `
+                  <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                    <button class="qty-btn w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-sm font-700"
+                            onclick="event.stopPropagation(); changeQty(${item.id}, -1)">-</button>
+                    <span class="text-white font-700 text-sm w-6 text-center">${inCart.qty}</span>
+                    <button class="qty-btn w-7 h-7 rounded-full bg-orange-600 text-white flex items-center justify-center text-sm font-700"
+                            onclick="event.stopPropagation(); changeQty(${item.id}, 1)">+</button>
+                  </div>
+                ` : (!outOfStock ? `
+                  <div class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.5)" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                  </div>
+                ` : '')}
+              </div>
+              ${!outOfStock && item.stok <= 5 ? `<p class="text-[10px] text-orange-400/70 mt-1">Sisa ${item.stok}</p>` : ''}
+            </div>
+          `;
+        }).join("");
+      }
+
+      // ============================
+      // Category Filter
+      // ============================
+      function filterCategory(cat) {
+        currentCategory = cat;
+        document.querySelectorAll(".cat-pill").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.cat === cat);
+        });
+        renderMenu();
+      }
+
+      // ============================
+      // Cart Logic
+      // ============================
+      function addToCart(id) {
+        const item = menuData.find(m => m.id === id);
+        if (!item || item.stok <= 0) return;
+
+        if (cart[id]) {
+          if (cart[id].qty >= item.stok) return;
+          cart[id].qty++;
+        } else {
+          cart[id] = { id: item.id, nama: item.nama, harga: item.harga, qty: 1 };
+        }
+
+        bounceFab();
+        updateCartUI();
+        renderMenu();
+      }
+
+      function changeQty(id, delta) {
+        if (!cart[id]) return;
+
+        const item = menuData.find(m => m.id === id);
+        const newQty = cart[id].qty + delta;
+
+        if (newQty <= 0) {
+          delete cart[id];
+        } else if (item && newQty <= item.stok) {
+          cart[id].qty = newQty;
+        } else {
+          return;
+        }
+
+        updateCartUI();
+        renderMenu();
+      }
+
+      function clearCart() {
+        cart = {};
+        updateCartUI();
+        renderMenu();
+        toggleCart();
+      }
+
+      function getCartCount() {
+        return Object.values(cart).reduce((sum, i) => sum + i.qty, 0);
+      }
+
+      function getCartTotal() {
+        return Object.values(cart).reduce((sum, i) => sum + i.harga * i.qty, 0);
+      }
+
+      function updateCartUI() {
+        const count = getCartCount();
+        const total = getCartTotal();
+        const fab = document.getElementById("cart-fab");
+        const badge = document.getElementById("cart-badge");
+        const cartItems = document.getElementById("cart-items");
+        const cartEmpty = document.getElementById("cart-empty");
+        const cartFooter = document.getElementById("cart-footer");
+        const cartTotal = document.getElementById("cart-total");
+
+        // FAB visibility
+        if (count > 0) {
+          fab.classList.remove("hidden");
+          fab.classList.add("flex");
+          badge.textContent = count;
+        } else {
+          fab.classList.add("hidden");
+          fab.classList.remove("flex");
+        }
+
+        // Cart panel content
+        const items = Object.values(cart);
+        if (items.length === 0) {
+          cartItems.classList.add("hidden");
+          cartEmpty.classList.remove("hidden");
+          cartFooter.classList.add("hidden");
+        } else {
+          cartItems.classList.remove("hidden");
+          cartEmpty.classList.add("hidden");
+          cartFooter.classList.remove("hidden");
+
+          cartItems.innerHTML = items.map(item => {
+            const emoji = CATEGORY_EMOJI[menuData.find(m => m.id === item.id)?.kategori] || "🍽️";
+            return `
+              <div class="glass-card rounded-xl p-3 flex items-center gap-3">
+                <div class="text-2xl">${emoji}</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-white font-600 text-sm truncate">${item.nama}</p>
+                  <p class="text-white/40 text-xs">Rp ${item.harga.toLocaleString("id-ID")}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="qty-btn w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-sm font-700"
+                          onclick="changeQty(${item.id}, -1)">-</button>
+                  <span class="text-white font-700 text-sm w-5 text-center">${item.qty}</span>
+                  <button class="qty-btn w-7 h-7 rounded-full bg-orange-600 text-white flex items-center justify-center text-sm font-700"
+                          onclick="changeQty(${item.id}, 1)">+</button>
+                </div>
+                <span class="text-white font-700 text-sm ml-1 min-w-[60px] text-right">
+                  Rp ${(item.harga * item.qty).toLocaleString("id-ID")}
+                </span>
+              </div>
+            `;
+          }).join("");
+
+          cartTotal.textContent = `Rp ${total.toLocaleString("id-ID")}`;
+        }
+      }
+
+      // ============================
+      // Cart Panel Toggle
+      // ============================
+      function toggleCart() {
+        const overlay = document.getElementById("cart-overlay");
+        const panel = document.getElementById("cart-panel");
+        const isOpen = panel.classList.contains("show");
+
+        if (isOpen) {
+          overlay.classList.remove("show");
+          panel.classList.remove("show");
+        } else {
+          overlay.classList.add("show");
+          panel.classList.add("show");
+        }
+      }
+
+      function bounceFab() {
+        const fab = document.getElementById("cart-fab");
+        fab.classList.remove("bounce");
+        void fab.offsetWidth;
+        fab.classList.add("bounce");
+      }
+
+      // ============================
+      // Submit Order
+      // ============================
+      function submitOrder() {
+        if (isSubmitting || getCartCount() === 0) return;
+        isSubmitting = true;
+
+        const btn = document.getElementById("btn-submit");
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> Mengirim...';
+
+        const items = Object.values(cart).map(item => ({
+          menuId: item.id,
+          nama: item.nama,
+          qty: item.qty,
+          harga: item.harga,
+        }));
+
+        const order = {
+          meja: mejaNumber,
+          items: items,
+          total: getCartTotal(),
+        };
+
+        socket.emit("customer-order", order);
+
+        // Show success after short delay
+        setTimeout(() => {
+          toggleCart();
+          setTimeout(() => {
+            document.getElementById("success-overlay").classList.add("show");
+          }, 300);
+        }, 800);
+      }
+
+      // ============================
+      // Reset Page
+      // ============================
+      function resetPage() {
+        cart = {};
+        isSubmitting = false;
+        const btn = document.getElementById("btn-submit");
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          Kirim Pesanan
+        `;
+        document.getElementById("success-overlay").classList.remove("show");
+        updateCartUI();
+        renderMenu();
+        // Reload menu in case stock changed
+        loadMenu();
+      }
+
+      // ============================
+      // Socket listeners
+      // ============================
+      socket.on("connect", () => {
+        socket.emit("identify", { role: "pelanggan", username: `meja-${mejaNumber}` });
+      });
+
+      // Listen for menu updates (stock changes etc.)
+      socket.on("sync-data", (data) => {
+        if (data.menu) {
+          menuData = data.menu;
+          renderMenu();
+        }
+      });
+
+      socket.on("transaction-update", (data) => {
+        if (data.menu) {
+          menuData = data.menu;
+          renderMenu();
+        }
+      });
+    </script>
+  </body>
+</html>

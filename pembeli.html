@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Warkop Urban - Layar Pembeli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+      * { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        background: #050505;
+        min-height: 100dvh;
+        overflow-x: hidden;
+      }
+
+      /* ===== ANIMATED MESH GRADIENT ===== */
+      .mesh-bg {
+        position: fixed; inset: 0; z-index: 0;
+        background:
+          radial-gradient(ellipse 60% 50% at 10% 20%, rgba(234,88,12,0.12) 0%, transparent 50%),
+          radial-gradient(ellipse 50% 60% at 90% 80%, rgba(124,58,237,0.1) 0%, transparent 50%),
+          radial-gradient(ellipse 40% 40% at 50% 50%, rgba(14,165,233,0.06) 0%, transparent 50%);
+        animation: meshShift 12s ease-in-out infinite alternate;
+      }
+      @keyframes meshShift {
+        0% { filter: hue-rotate(0deg); }
+        50% { filter: hue-rotate(15deg); }
+        100% { filter: hue-rotate(-10deg); }
+      }
+
+      /* ===== GRID LINES ===== */
+      .grid-lines {
+        position: fixed; inset: 0; z-index: 1;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+        background-size: 50px 50px;
+        mask-image: radial-gradient(ellipse 70% 50% at 50% 40%, rgba(0,0,0,0.6), transparent);
+      }
+
+      /* ===== FLOATING ORBS ===== */
+      .orb {
+        position: fixed; border-radius: 50%; pointer-events: none;
+        filter: blur(1px);
+        animation: orbFloat linear infinite; opacity: 0;
+      }
+      @keyframes orbFloat {
+        0% { opacity: 0; transform: translateY(20px) scale(0); }
+        8% { opacity: 1; }
+        85% { opacity: 0.3; }
+        100% { opacity: 0; transform: translateY(-100vh) scale(0.8) rotate(180deg); }
+      }
+
+      /* ===== GLASS ===== */
+      .glass {
+        background: rgba(255,255,255,0.035);
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.05);
+      }
+      .glass-card {
+        background: rgba(255,255,255,0.05);
+        backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      /* ===== SCROLLBAR ===== */
+      .custom-scroll::-webkit-scrollbar { width: 3px; }
+      .custom-scroll::-webkit-scrollbar-thumb { background: rgba(234,88,12,0.2); border-radius: 10px; }
+
+      /* ===== LOGO ===== */
+      @keyframes logoPulse {
+        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(234,88,12,0.3)); }
+        50% { transform: scale(1.03); filter: drop-shadow(0 0 15px rgba(234,88,12,0.5)); }
+      }
+      .logo-pulse { animation: logoPulse 4s ease-in-out infinite; }
+      @keyframes steamRise { 0%, 100% { transform: translateY(0); opacity: 0.3; } 50% { transform: translateY(-5px); opacity: 0.9; } }
+      .logo-steam path { animation: steamRise 2.5s ease-in-out infinite; }
+      .logo-steam path:nth-child(2) { animation-delay: 0.4s; }
+      .logo-steam path:nth-child(3) { animation-delay: 0.8s; }
+
+      /* ===== TOTAL CARD ===== */
+      .total-card {
+        position: relative;
+        background: linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #9f1239 100%);
+        box-shadow: 0 20px 50px -12px rgba(234,88,12,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+      }
+      @keyframes totalGlow {
+        0%, 100% { box-shadow: 0 20px 50px -12px rgba(234,88,12,0.3), inset 0 1px 0 rgba(255,255,255,0.1); }
+        50% { box-shadow: 0 20px 60px -8px rgba(234,88,12,0.5), 0 0 30px rgba(234,88,12,0.15), inset 0 1px 0 rgba(255,255,255,0.1); }
+      }
+      .total-glow { animation: totalGlow 3s ease-in-out infinite; }
+
+      /* ===== SHIMMER SWEEP ===== */
+      .shimmer-sweep::before {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%);
+        background-size: 250% 100%;
+        animation: sweepShimmer 4s ease-in-out infinite;
+        border-radius: inherit;
+      }
+      @keyframes sweepShimmer { 0% { background-position: 250% 0; } 100% { background-position: -250% 0; } }
+
+      /* ===== COUNT ANIMATION ===== */
+      @keyframes countBounce {
+        0% { transform: scale(1.15) translateY(-4px); opacity: 0.6; }
+        60% { transform: scale(0.98); }
+        100% { transform: scale(1) translateY(0); opacity: 1; }
+      }
+      .count-animate { animation: countBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+      /* ===== ITEM SLIDE ===== */
+      @keyframes itemSlide {
+        0% { transform: translateX(-30px) scale(0.9); opacity: 0; }
+        100% { transform: translateX(0) scale(1); opacity: 1; }
+      }
+      .item-slide { animation: itemSlide 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+
+      /* ===== WAITING ===== */
+      @keyframes gentleFloat {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        25% { transform: translateY(-10px) rotate(-3deg); }
+        75% { transform: translateY(-5px) rotate(3deg); }
+      }
+      .gentle-float { animation: gentleFloat 4s ease-in-out infinite; }
+      @keyframes ringExpand {
+        0% { transform: scale(0.6); opacity: 0.6; border-color: rgba(234,88,12,0.3); }
+        100% { transform: scale(2.2); opacity: 0; border-color: rgba(234,88,12,0); }
+      }
+      .ring-expand { animation: ringExpand 2.5s ease-out infinite; }
+
+      /* ===== MARQUEE ===== */
+      .marquee { overflow: hidden; white-space: nowrap; }
+      .marquee-inner { display: inline-flex; animation: scrollMarquee 30s linear infinite; }
+      @keyframes scrollMarquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+      /* ===== CLOCK ===== */
+      @keyframes colonBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+      .colon-blink { animation: colonBlink 1s ease-in-out infinite; }
+
+      /* ===== STATUS ===== */
+      @keyframes livePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); } 70% { box-shadow: 0 0 0 7px rgba(34,197,94,0); } }
+      .live-pulse { animation: livePulse 2s infinite; }
+
+      /* ===== BADGE ===== */
+      @keyframes popBadge { 0% { transform: scale(0) rotate(-10deg); } 60% { transform: scale(1.2) rotate(3deg); } 100% { transform: scale(1) rotate(0deg); } }
+      .pop-badge { animation: popBadge 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+      /* ===== NEON BORDER ===== */
+      @keyframes neonBorder {
+        0%, 100% { border-color: rgba(234,88,12,0.1); }
+        50% { border-color: rgba(234,88,12,0.25); }
+      }
+      .neon-border { animation: neonBorder 3s ease-in-out infinite; }
+
+      /* ===== SPLASH SCREEN ===== */
+      .splash-screen {
+        position: fixed; inset: 0; z-index: 9999;
+        background: #050505;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 0.6s ease, transform 0.6s ease;
+      }
+      .splash-screen.hide {
+        opacity: 0; transform: scale(1.1); pointer-events: none;
+      }
+      @keyframes splashLogo {
+        0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+        50% { transform: scale(1.15) rotate(3deg); opacity: 1; }
+        100% { transform: scale(1) rotate(0deg); opacity: 1; }
+      }
+      @keyframes splashText {
+        0% { transform: translateY(30px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes splashBar {
+        0% { width: 0%; }
+        100% { width: 100%; }
+      }
+      .splash-logo { animation: splashLogo 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+      .splash-text { animation: splashText 0.5s ease 0.4s backwards; }
+      .splash-bar { animation: splashBar 1.8s ease 0.6s forwards; }
+
+      /* ===== TOUCH RIPPLE ===== */
+      .ripple-effect {
+        position: fixed; border-radius: 50%; pointer-events: none; z-index: 9998;
+        background: radial-gradient(circle, rgba(234,88,12,0.4) 0%, rgba(234,88,12,0.1) 40%, transparent 70%);
+        transform: scale(0); animation: rippleExpand 0.6s ease-out forwards;
+      }
+      @keyframes rippleExpand {
+        0% { transform: scale(0); opacity: 1; }
+        100% { transform: scale(1); opacity: 0; }
+      }
+
+      /* ===== PULL TO REFRESH ===== */
+      .pull-indicator {
+        position: fixed; top: 0; left: 50%; transform: translateX(-50%) translateY(-60px);
+        z-index: 100; transition: transform 0.3s ease;
+      }
+      .pull-indicator.visible { transform: translateX(-50%) translateY(15px); }
+      .pull-spinner {
+        width: 36px; height: 36px; border: 3px solid rgba(234,88,12,0.15);
+        border-top-color: #ea580c; border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* ===== GREETING ===== */
+      @keyframes greetSlide {
+        0% { transform: translateX(-20px); opacity: 0; }
+        100% { transform: translateX(0); opacity: 1; }
+      }
+      .greet-animate { animation: greetSlide 0.6s ease 0.3s backwards; }
+
+      /* ===== ITEM PULSE NEW ===== */
+      @keyframes newItemPulse {
+        0% { box-shadow: 0 0 0 0 rgba(234,88,12,0.4); }
+        70% { box-shadow: 0 0 0 12px rgba(234,88,12,0); }
+        100% { box-shadow: 0 0 0 0 rgba(234,88,12,0); }
+      }
+      .new-item-pulse { animation: newItemPulse 0.8s ease; }
+
+      /* ===== RECEIPT/STRUK ===== */
+      .receipt-overlay {
+        position: fixed; inset: 0; z-index: 900;
+        background: rgba(0,0,0,0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        display: flex; align-items: center; justify-content: center; padding: 16px;
+      }
+      .receipt-paper {
+        background: #fff; color: #1a1a1a; width: 100%; max-width: 320px;
+        border-radius: 4px; padding: 24px 20px;
+        font-family: 'Courier New', Courier, monospace;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+        animation: receiptSlide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative; overflow: hidden;
+      }
+      .receipt-paper::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+        background: linear-gradient(90deg, #ea580c, #f97316, #ea580c);
+      }
+      /* Efek sobekan bawah */
+      .receipt-paper::after {
+        content: ''; position: absolute; bottom: -6px; left: 0; right: 0; height: 12px;
+        background: linear-gradient(135deg, #fff 33.33%, transparent 33.33%) 0 0,
+                    linear-gradient(225deg, #fff 33.33%, transparent 33.33%) 0 0;
+        background-size: 12px 12px;
+      }
+      @keyframes receiptSlide {
+        0% { transform: translateY(60px) scale(0.9); opacity: 0; }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+      }
+      .receipt-dash {
+        border: none; border-top: 2px dashed #ccc; margin: 10px 0;
+      }
+      .receipt-dot-line {
+        border: none; border-top: 1px dotted #ddd; margin: 8px 0;
+      }
+      @keyframes receiptFadeIn {
+        0% { opacity: 0; transform: translateY(10px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      .receipt-fade { animation: receiptFadeIn 0.3s ease backwards; }
+
+      /* ===== GRADIENT TEXT ===== */
+      .text-gradient-warm {
+        background: linear-gradient(135deg, #fb923c, #f97316, #ea580c);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+      }
+      .text-gradient-gold {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b, #d97706);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+      }
+
+      /* ===== PROGRESS LINE ===== */
+      .progress-line {
+        position: relative; overflow: hidden;
+      }
+      .progress-line::after {
+        content: ''; position: absolute; top: 0; left: 0;
+        width: 40%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+        animation: progressSlide 2.5s ease-in-out infinite;
+      }
+      @keyframes progressSlide { 0% { transform: translateX(-150%); } 100% { transform: translateX(400%); } }
+
+      /* ===== SUCCESS ===== */
+      @keyframes successPop { 0% { transform: scale(0); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
+      @keyframes drawCheck { to { stroke-dashoffset: 0; } }
+      @keyframes successRing { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2); opacity: 0; } }
+      @keyframes successFadeUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+      @keyframes confettiFall {
+        0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+      }
+    </style>
+  </head>
+  <body class="min-h-[100dvh] flex flex-col">
+
+    <!-- Splash Screen -->
+    <div id="splash" class="splash-screen">
+      <div class="relative mb-6">
+        <div class="absolute inset-0 w-24 h-24 rounded-full bg-orange-500/20 animate-ping" style="animation-duration:2s;margin-left:-12px;margin-top:-12px;width:120%;height:120%;"></div>
+        <div class="splash-logo bg-gradient-to-br from-orange-500 via-orange-600 to-red-700 w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-600/40 border border-orange-400/20">
+          <svg class="w-14 h-14" viewBox="0 0 40 40" fill="none">
+            <g class="logo-steam">
+              <path d="M13 11 Q13 7 15 5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+              <path d="M20 11 Q20 6 22 4" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+              <path d="M27 11 Q27 7 29 5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            </g>
+            <rect x="7" y="13" width="24" height="16" rx="4" fill="rgba(255,255,255,0.9)"/>
+            <path d="M31 17 h4 a3 3 0 0 1 0 6 h-4" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <rect x="5" y="31" width="28" height="3" rx="1.5" fill="rgba(255,255,255,0.3)"/>
+            <text x="19" y="25" text-anchor="middle" fill="#ea580c" font-size="8.5" font-weight="900" font-family="sans-serif">WU</text>
+          </svg>
+        </div>
+      </div>
+      <h2 class="splash-text text-2xl font-black text-white tracking-tight mb-1">WARKOP <span class="text-gradient-warm">URBAN</span></h2>
+      <p class="splash-text text-[10px] font-bold text-white/25 uppercase tracking-[0.35em] mb-8" style="animation-delay:0.6s">Customer Display</p>
+      <div class="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+        <div class="splash-bar h-full bg-gradient-to-r from-orange-500 to-red-600 rounded-full" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Pull to Refresh Indicator -->
+    <div id="pull-indicator" class="pull-indicator">
+      <div class="glass-card rounded-full p-2.5 shadow-xl shadow-black/30">
+        <div class="pull-spinner"></div>
+      </div>
+    </div>
+
+    <!-- Background Layers -->
+    <div class="mesh-bg"></div>
+    <div class="grid-lines"></div>
+    <div id="orbs" class="fixed inset-0 pointer-events-none z-[2]"></div>
+
+    <!-- Main Container -->
+    <div class="relative z-10 flex flex-col min-h-[100dvh] w-full max-w-md mx-auto px-4 py-3">
+
+      <!-- Status Bar -->
+      <div class="flex justify-between items-center px-1 mb-2 flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-green-500 live-pulse" id="conn-dot"></div>
+          <span class="text-[9px] font-bold text-green-400/60 uppercase tracking-[0.2em]" id="conn-status">Live</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="live-date" class="text-[9px] font-bold text-white/20 uppercase tracking-wider"></span>
+          <span id="live-clock" class="text-[11px] font-black text-white/35 tabular-nums tracking-widest"></span>
+        </div>
+      </div>
+
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-4 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="logo-pulse relative">
+            <div class="bg-gradient-to-br from-orange-500 via-orange-600 to-red-700 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-orange-600/25 border border-orange-400/20">
+              <svg class="w-8 h-8" viewBox="0 0 40 40" fill="none">
+                <g class="logo-steam">
+                  <path d="M13 11 Q13 7 15 5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                  <path d="M20 11 Q20 6 22 4" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                  <path d="M27 11 Q27 7 29 5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                </g>
+                <rect x="7" y="13" width="24" height="16" rx="4" fill="rgba(255,255,255,0.9)"/>
+                <path d="M31 17 h4 a3 3 0 0 1 0 6 h-4" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <rect x="5" y="31" width="28" height="3" rx="1.5" fill="rgba(255,255,255,0.3)"/>
+                <text x="19" y="25" text-anchor="middle" fill="#ea580c" font-size="8.5" font-weight="900" font-family="sans-serif">WU</text>
+              </svg>
+            </div>
+          </div>
+          <div>
+            <h1 class="text-2xl font-black tracking-tight leading-none">
+              <span class="text-white">WARKOP</span>
+              <span class="text-gradient-warm ml-1">URBAN</span>
+            </h1>
+            <p class="text-[8px] font-bold text-white/15 uppercase tracking-[0.35em] mt-0.5">Konfirmasi Pesanan</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Greeting -->
+      <div id="greeting-box" class="greet-animate glass-card rounded-2xl px-5 py-3.5 mb-4 flex-shrink-0 flex items-center gap-3">
+        <div id="greet-emoji" class="text-3xl gentle-float">&#9749;</div>
+        <div>
+          <p id="greet-text" class="text-sm font-black text-white/80"></p>
+          <p id="greet-sub" class="text-[9px] font-bold text-white/25 mt-0.5 uppercase tracking-wider"></p>
+        </div>
+      </div>
+
+      <!-- Marquee -->
+      <div class="marquee glass rounded-2xl py-2.5 mb-4 flex-shrink-0">
+        <div class="marquee-inner">
+          <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#9749; Selamat datang di Warkop Urban!</span>
+          <span class="text-[10px] font-bold text-white/20 mx-6">&#11088; Belanja Rp 10.000 = 1 Poin</span>
+          <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#127873; Tukar poin untuk diskon!</span>
+          <span class="text-[10px] font-bold text-white/20 mx-6">&#128293; Menu best seller tersedia!</span>
+          <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#128241; Bayar praktis dengan QRIS</span>
+          <span class="text-[10px] font-bold text-white/20 mx-6">&#9749; Selamat datang di Warkop Urban!</span>
+          <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#11088; Belanja Rp 10.000 = 1 Poin</span>
+          <span class="text-[10px] font-bold text-white/20 mx-6">&#127873; Tukar poin untuk diskon!</span>
+          <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#128293; Menu best seller tersedia!</span>
+          <span class="text-[10px] font-bold text-white/20 mx-6">&#128241; Bayar praktis dengan QRIS</span>
+        </div>
+      </div>
+
+      <!-- Total Belanja -->
+      <div class="total-card total-glow shimmer-sweep rounded-[24px] p-7 mb-4 flex-shrink-0 relative overflow-hidden">
+        <!-- Decoratives -->
+        <div class="absolute -top-16 -right-16 w-40 h-40 bg-white/[0.03] rounded-full"></div>
+        <div class="absolute -bottom-10 -left-10 w-28 h-28 bg-white/[0.03] rounded-full"></div>
+        <div class="absolute top-4 right-6 w-3 h-3 bg-white/10 rounded-full animate-ping" style="animation-duration:3s"></div>
+        <div class="absolute bottom-6 left-8 w-2 h-2 bg-white/10 rounded-full animate-ping" style="animation-duration:4s"></div>
+
+        <!-- Top accent line -->
+        <div class="progress-line absolute top-0 left-0 right-0 h-[2px] bg-white/10 rounded-full"></div>
+
+        <div class="relative z-10 text-center">
+          <div class="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1 mb-3">
+            <div class="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse"></div>
+            <p class="text-white/70 text-[9px] font-bold uppercase tracking-[0.3em]">Total Belanja</p>
+          </div>
+          <h2 id="display-total" class="text-[3.2rem] font-black text-white tabular-nums tracking-tight leading-none transition-all drop-shadow-lg">Rp 0</h2>
+          <div id="total-items-badge" class="hidden mt-4">
+            <span class="pop-badge inline-flex items-center gap-2 bg-white/10 border border-white/10 text-white/80 text-[10px] font-bold px-5 py-2 rounded-full" id="total-items-text">
+              0 item
+            </span>
+          </div>
+        </div>
+
+        <!-- Bottom accent line -->
+        <div class="progress-line absolute bottom-0 left-0 right-0 h-[2px] bg-white/10 rounded-full" style="animation-delay:1.2s"></div>
+      </div>
+
+      <!-- Payment Method -->
+      <div id="payment-method" class="hidden flex-shrink-0 mb-3">
+        <div class="glass-card rounded-2xl py-3 px-5 flex items-center justify-center gap-2.5">
+          <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+          <span id="payment-method-text" class="text-[10px] font-black text-white/60 uppercase tracking-[0.2em]"></span>
+        </div>
+      </div>
+
+      <!-- Rincian Pesanan -->
+      <div class="glass-card neon-border rounded-[24px] flex-1 flex flex-col overflow-hidden mb-3 min-h-0">
+        <!-- Header -->
+        <div class="px-5 pt-5 pb-3 flex-shrink-0">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500/15 to-red-500/15 flex items-center justify-center border border-orange-500/10">
+                <span class="text-base">&#128221;</span>
+              </div>
+              <h3 class="text-xs font-black text-white/70 uppercase tracking-[0.15em]">Rincian Pesanan</h3>
+            </div>
+            <span id="item-count" class="text-[9px] font-bold text-orange-400/80 bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/15">0 item</span>
+          </div>
+          <div class="mt-3 h-[1px] bg-gradient-to-r from-transparent via-white/8 to-transparent"></div>
+        </div>
+
+        <!-- Items -->
+        <div id="order-items" class="flex-1 overflow-y-auto custom-scroll px-4 py-1 space-y-2">
+          <div id="empty-state" class="flex flex-col items-center justify-center py-12 text-center">
+            <div class="relative mb-5">
+              <div class="ring-expand absolute border-2 border-orange-500/20 rounded-full w-24 h-24" style="left:50%;top:50%;margin-left:-48px;margin-top:-48px;"></div>
+              <div class="ring-expand absolute border-2 border-orange-500/10 rounded-full w-24 h-24" style="left:50%;top:50%;margin-left:-48px;margin-top:-48px;animation-delay:0.8s"></div>
+              <div class="gentle-float text-7xl opacity-30 relative z-10">&#9749;</div>
+            </div>
+            <p class="text-white/20 text-sm font-black uppercase tracking-[0.25em]">Menunggu</p>
+            <p class="text-white/8 text-[10px] mt-2 max-w-[220px] leading-relaxed">Pesanan akan tampil otomatis saat kasir memproses</p>
+            <div class="flex items-center gap-2.5 mt-5">
+              <div class="w-2 h-2 bg-orange-500/30 rounded-full animate-bounce" style="animation-delay:0s"></div>
+              <div class="w-2 h-2 bg-orange-500/30 rounded-full animate-bounce" style="animation-delay:0.2s"></div>
+              <div class="w-2 h-2 bg-orange-500/30 rounded-full animate-bounce" style="animation-delay:0.4s"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QRIS -->
+      <div id="qris-container" class="hidden flex-shrink-0 mb-3">
+        <div class="glass-card rounded-[24px] p-6 text-center relative overflow-hidden neon-border">
+          <div class="progress-line absolute top-0 left-0 right-0 h-[2px] bg-violet-400/20"></div>
+          <div class="flex items-center justify-center gap-2 mb-4">
+            <span class="text-xl">&#128179;</span>
+            <p class="text-[10px] font-black text-white/50 uppercase tracking-[0.25em]">Scan QRIS</p>
+          </div>
+          <div class="bg-white p-3 rounded-3xl inline-block mb-3 shadow-2xl shadow-black/40">
+            <img src="/public/qris.png.png" class="w-48 h-48 object-contain" alt="QRIS"
+              onerror="this.parentElement.innerHTML='<p class=\'text-red-400 text-xs p-10\'>QRIS tidak tersedia</p>'" />
+          </div>
+          <p class="text-[9px] text-orange-400/50 font-bold">Arahkan kamera ke kode QR</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="text-center py-3 flex-shrink-0">
+        <div class="flex justify-center items-center gap-4 mb-2">
+          <div class="h-[1px] w-10 bg-gradient-to-r from-transparent to-white/8"></div>
+          <span class="text-white/10 text-[7px] font-black uppercase tracking-[0.4em]">Warkop Urban</span>
+          <div class="h-[1px] w-10 bg-gradient-to-l from-transparent to-white/8"></div>
+        </div>
+        <p class="text-white/8 text-[8px]">Pastikan nominal sesuai sebelum membayar</p>
+        <p class="text-white/15 text-[8px] font-bold mt-0.5">Terima kasih atas kunjungan Anda &#128591;</p>
+      </div>
+    </div>
+
+    <!-- Receipt/Struk Popup -->
+    <div id="receipt-overlay" class="receipt-overlay hidden" onclick="closeReceipt(event)">
+      <div class="receipt-paper" onclick="event.stopPropagation()">
+        <div class="text-center mb-2">
+          <p class="text-lg font-black tracking-tighter">WARKOP URBAN</p>
+          <p class="text-[9px] text-gray-400 tracking-widest">STRUK PEMBELIAN</p>
+        </div>
+        <hr class="receipt-dash">
+        <div class="flex justify-between text-[10px] text-gray-500 mb-1">
+          <span id="receipt-date-buyer"></span>
+          <span id="receipt-kasir"></span>
+        </div>
+        <div class="flex justify-between text-[10px] text-gray-500">
+          <span id="receipt-method-buyer"></span>
+          <span id="receipt-no"></span>
+        </div>
+        <hr class="receipt-dash">
+
+        <!-- Items -->
+        <div id="receipt-items-buyer" class="space-y-1"></div>
+
+        <hr class="receipt-dash">
+        <div class="flex justify-between font-black text-sm">
+          <span>TOTAL</span>
+          <span id="receipt-total-buyer"></span>
+        </div>
+        <div id="receipt-cash-info" class="hidden">
+          <hr class="receipt-dot-line">
+          <div class="flex justify-between text-[11px]">
+            <span>Tunai</span>
+            <span id="receipt-paid"></span>
+          </div>
+          <div class="flex justify-between text-[11px] font-bold">
+            <span>Kembali</span>
+            <span id="receipt-change-buyer"></span>
+          </div>
+        </div>
+
+        <hr class="receipt-dash">
+        <div class="text-center mt-2">
+          <p class="text-[9px] text-gray-400">Terima kasih atas kunjungan Anda!</p>
+          <p class="text-[8px] text-gray-300 mt-1">Simpan struk ini sebagai bukti pembelian</p>
+          <div class="flex items-center justify-center gap-1 mt-2">
+            <span class="text-[10px]">&#9749;</span>
+            <p class="text-[8px] text-gray-300 font-bold tracking-widest uppercase">Warkop Urban POS</p>
+            <span class="text-[10px]">&#9749;</span>
+          </div>
+        </div>
+
+        <!-- Close button -->
+        <button onclick="closeReceipt()" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-gray-100 hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-500 transition-all text-xs font-bold">
+          &#10005;
+        </button>
+      </div>
+    </div>
+
+    <!-- Success Popup -->
+    <div id="success-overlay" class="fixed inset-0 z-[999] hidden items-center justify-center p-6" style="background:rgba(0,0,0,0.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
+      <div class="text-center">
+        <div class="relative inline-block mb-8">
+          <div class="absolute inset-0 w-32 h-32 rounded-full border-2 border-emerald-500/30" style="animation:successRing 1.5s ease-out infinite;"></div>
+          <div class="absolute inset-0 w-32 h-32 rounded-full border-2 border-emerald-500/15" style="animation:successRing 1.5s ease-out 0.4s infinite;"></div>
+          <div class="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-2xl shadow-emerald-500/40" style="animation:successPop 0.5s cubic-bezier(0.34,1.56,0.64,1);">
+            <svg class="w-16 h-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" style="stroke-dasharray:30;stroke-dashoffset:30;animation:drawCheck 0.6s ease 0.3s forwards;" />
+            </svg>
+          </div>
+        </div>
+        <h2 class="text-3xl font-black text-white mb-3" style="animation:successFadeUp 0.5s ease 0.2s backwards;">Pembayaran Berhasil!</h2>
+        <p id="success-total" class="text-4xl font-black bg-gradient-to-r from-emerald-300 to-green-400 bg-clip-text text-transparent mb-3" style="-webkit-text-fill-color:transparent;animation:successFadeUp 0.5s ease 0.35s backwards;"></p>
+        <p id="success-method" class="text-white/30 text-sm font-bold uppercase tracking-[0.3em] mb-8" style="animation:successFadeUp 0.5s ease 0.45s backwards;"></p>
+        <p class="text-white/15 text-[9px] font-bold uppercase tracking-[0.3em]" style="animation:successFadeUp 0.5s ease 0.55s backwards;">Terima kasih telah berbelanja</p>
+        <div id="success-confetti" class="fixed inset-0 pointer-events-none overflow-hidden"></div>
+      </div>
+    </div>
+
+    <script>
+      // ===== SPLASH SCREEN =====
+      setTimeout(() => {
+        const splash = document.getElementById('splash');
+        splash.classList.add('hide');
+        setTimeout(() => splash.style.display = 'none', 600);
+      }, 2500);
+
+      // ===== DYNAMIC GREETING =====
+      function updateGreeting() {
+        const h = new Date().getHours();
+        const greetText = document.getElementById('greet-text');
+        const greetSub = document.getElementById('greet-sub');
+        const greetEmoji = document.getElementById('greet-emoji');
+        if (h >= 5 && h < 11) {
+          greetEmoji.innerHTML = '&#9728;&#65039;';
+          greetText.textContent = 'Selamat Pagi!';
+          greetSub.textContent = 'Mulai hari dengan secangkir kopi';
+        } else if (h >= 11 && h < 15) {
+          greetEmoji.innerHTML = '&#127774;';
+          greetText.textContent = 'Selamat Siang!';
+          greetSub.textContent = 'Istirahat sejenak, nikmati menu favorit';
+        } else if (h >= 15 && h < 18) {
+          greetEmoji.innerHTML = '&#127773;';
+          greetText.textContent = 'Selamat Sore!';
+          greetSub.textContent = 'Waktu santai bersama Warkop Urban';
+        } else {
+          greetEmoji.innerHTML = '&#127769;';
+          greetText.textContent = 'Selamat Malam!';
+          greetSub.textContent = 'Ngopi malam, suasana tenang';
+        }
+      }
+      updateGreeting();
+      setInterval(updateGreeting, 60000);
+
+      // ===== TOUCH RIPPLE EFFECT =====
+      document.addEventListener('touchstart', function(e) {
+        const touch = e.touches[0];
+        const ripple = document.createElement('div');
+        ripple.className = 'ripple-effect';
+        const size = 120;
+        ripple.style.width = size + 'px';
+        ripple.style.height = size + 'px';
+        ripple.style.left = (touch.clientX - size/2) + 'px';
+        ripple.style.top = (touch.clientY - size/2) + 'px';
+        document.body.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+      }, { passive: true });
+
+      // ===== PULL TO REFRESH =====
+      (function() {
+        let startY = 0, pulling = false;
+        const pullIndicator = document.getElementById('pull-indicator');
+        document.addEventListener('touchstart', function(e) {
+          if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
+        }, { passive: true });
+        document.addEventListener('touchmove', function(e) {
+          if (!pulling) return;
+          const diff = e.touches[0].clientY - startY;
+          if (diff > 80) { pullIndicator.classList.add('visible'); }
+        }, { passive: true });
+        document.addEventListener('touchend', function() {
+          if (pullIndicator.classList.contains('visible')) {
+            if (navigator.vibrate) navigator.vibrate(30);
+            socket.disconnect();
+            setTimeout(() => socket.connect(), 500);
+            setTimeout(() => pullIndicator.classList.remove('visible'), 1500);
+          }
+          pulling = false;
+        }, { passive: true });
+      })();
+
+      // ===== VIBRATION HELPER =====
+      function vibrateDevice(pattern) {
+        if (navigator.vibrate) navigator.vibrate(pattern);
+      }
+
+      // ===== SMOOTH NUMBER COUNTER =====
+      function animateValue(el, start, end, duration) {
+        if (start === end) return;
+        const range = end - start;
+        const startTime = performance.now();
+        function step(timestamp) {
+          const progress = Math.min((timestamp - startTime) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.round(start + range * eased);
+          el.textContent = 'Rp ' + current.toLocaleString('id-ID');
+          if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+      let currentTotalValue = 0;
+
+      // ===== Floating Orbs =====
+      (function() {
+        const c = document.getElementById('orbs');
+        const colors = ['rgba(234,88,12,0.6)','rgba(249,115,22,0.5)','rgba(251,191,36,0.4)','rgba(124,58,237,0.3)','rgba(14,165,233,0.3)'];
+        for (let i = 0; i < 25; i++) {
+          const o = document.createElement('div');
+          o.className = 'orb';
+          const s = Math.random() * 5 + 2;
+          o.style.cssText = `left:${Math.random()*100}%;bottom:-10px;width:${s}px;height:${s}px;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${Math.random()*14+8}s;animation-delay:${Math.random()*10}s;`;
+          c.appendChild(o);
+        }
+      })();
+
+      // ===== Clock & Date =====
+      function updateClock() {
+        const now = new Date();
+        const h = now.getHours().toString().padStart(2,'0');
+        const m = now.getMinutes().toString().padStart(2,'0');
+        const s = now.getSeconds().toString().padStart(2,'0');
+        document.getElementById('live-clock').innerHTML = `${h}<span class="colon-blink">:</span>${m}<span class="colon-blink">:</span>${s}`;
+        const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+        const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+        document.getElementById('live-date').textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+      }
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      // ===== Socket =====
+      const socket = io();
+      const displayTotal = document.getElementById("display-total");
+      const orderItems = document.getElementById("order-items");
+      const emptyState = document.getElementById("empty-state");
+      const itemCount = document.getElementById("item-count");
+      const qrisContainer = document.getElementById("qris-container");
+      const totalItemsBadge = document.getElementById("total-items-badge");
+      const totalItemsText = document.getElementById("total-items-text");
+      const connDot = document.getElementById("conn-dot");
+      const connStatus = document.getElementById("conn-status");
+      const paymentMethod = document.getElementById("payment-method");
+      const paymentMethodText = document.getElementById("payment-method-text");
+
+      socket.on("connect", () => {
+        connDot.className = "w-2.5 h-2.5 rounded-full bg-green-500 live-pulse";
+        connStatus.textContent = "Live";
+        connStatus.className = "text-[9px] font-bold text-green-400/60 uppercase tracking-[0.2em]";
+      });
+      socket.on("disconnect", () => {
+        connDot.className = "w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse";
+        connStatus.textContent = "Offline";
+        connStatus.className = "text-[9px] font-bold text-red-400/60 uppercase tracking-[0.2em]";
+      });
+
+      let lastItemsJSON = "";
+
+      function getCategoryIcon(name) {
+        const n = name.toLowerCase();
+        if (n.includes('kopi') || n.includes('latte') || n.includes('cappuccino') || n.includes('espresso')) return '&#9749;';
+        if (n.includes('teh')) return '&#127861;';
+        if (n.includes('indomie') || n.includes('mie') || n.includes('nasi')) return '&#127835;';
+        if (n.includes('kentang') || n.includes('snack') || n.includes('cireng') || n.includes('risol') || n.includes('dimsum') || n.includes('otak')) return '&#127839;';
+        if (n.includes('es ') || n.includes('jus') || n.includes('nutrisari')) return '&#127867;';
+        if (n.includes('susu') || n.includes('extrajoss') || n.includes('kukubima')) return '&#129380;';
+        return '&#127860;';
+      }
+
+      function getCategoryColor(name) {
+        const n = name.toLowerCase();
+        if (n.includes('kopi') || n.includes('latte')) return 'from-amber-500/15 to-orange-500/15 border-amber-500/15';
+        if (n.includes('teh') || n.includes('es ')) return 'from-cyan-500/15 to-blue-500/15 border-cyan-500/15';
+        if (n.includes('indomie') || n.includes('nasi')) return 'from-red-500/15 to-orange-500/15 border-red-500/15';
+        return 'from-orange-500/12 to-red-500/12 border-orange-500/12';
+      }
+
+      socket.on("update-total", (data) => {
+        if (data.total) {
+          const newVal = parseInt(data.total.replace(/[^\d]/g, '')) || 0;
+          animateValue(displayTotal, currentTotalValue, newVal, 600);
+          if (newVal !== currentTotalValue && currentTotalValue > 0) {
+            vibrateDevice(50);
+          }
+          currentTotalValue = newVal;
+          displayTotal.classList.remove("count-animate");
+          void displayTotal.offsetWidth;
+          displayTotal.classList.add("count-animate");
+        }
+
+        if (data.method === "qris") {
+          qrisContainer.classList.remove("hidden");
+          paymentMethod.classList.remove("hidden");
+          paymentMethodText.innerHTML = "&#128179; Pembayaran QRIS";
+        } else {
+          qrisContainer.classList.add("hidden");
+          if (data.items && data.items.length > 0) {
+            paymentMethod.classList.remove("hidden");
+            paymentMethodText.innerHTML = "&#128181; Pembayaran Tunai";
+          } else {
+            paymentMethod.classList.add("hidden");
+          }
+        }
+
+        const items = data.items || [];
+        const newJSON = JSON.stringify(items);
+        const totalQty = items.reduce((s, i) => s + i.qty, 0);
+
+        if (totalQty > 0) {
+          totalItemsBadge.classList.remove("hidden");
+          totalItemsText.textContent = totalQty + " item";
+        } else {
+          totalItemsBadge.classList.add("hidden");
+        }
+
+        if (newJSON === lastItemsJSON) return;
+        lastItemsJSON = newJSON;
+
+        if (items.length === 0) {
+          orderItems.innerHTML = "";
+          orderItems.appendChild(emptyState);
+          emptyState.classList.remove("hidden");
+          itemCount.textContent = "0 item";
+          paymentMethod.classList.add("hidden");
+          return;
+        }
+
+        emptyState.classList.add("hidden");
+        itemCount.textContent = `${totalQty} item`;
+
+        vibrateDevice(30);
+        orderItems.innerHTML = items.map((item, idx) => `
+          <div class="item-slide new-item-pulse group flex items-center gap-3 py-3 px-3.5 rounded-2xl hover:bg-white/[0.03] transition-all"
+               style="animation-delay: ${idx * 80}ms">
+            <div class="relative flex-shrink-0">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${getCategoryColor(item.name)} flex items-center justify-center border group-hover:scale-105 transition-transform">
+                <span class="text-xl">${getCategoryIcon(item.name)}</span>
+              </div>
+              <div class="absolute -top-1.5 -right-1.5 w-5.5 h-5.5 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/30 border border-orange-400/20" style="width:22px;height:22px;">
+                <span class="text-[9px] font-black text-white">${item.qty}</span>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-bold text-white/85 text-[12px] truncate leading-tight">${item.name}</p>
+              <p class="text-white/20 text-[9px] font-medium mt-0.5">@Rp ${item.price.toLocaleString("id-ID")}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="font-black text-gradient-warm text-sm tabular-nums">Rp ${item.subtotal.toLocaleString("id-ID")}</p>
+            </div>
+          </div>
+        `).join("");
+      });
+
+      // ===== SUCCESS =====
+      let lastTotal = "Rp 0", lastMethod = "";
+      socket.on("update-total", function(data) {
+        if (data.total) lastTotal = data.total;
+        if (data.method) lastMethod = data.method === "qris" ? "QRIS" : "Tunai";
+      });
+
+      socket.on("transaction-update", (data) => {
+        if (data.newItems && data.newItems.length > 0) {
+          const total = data.newItems.reduce((s, i) => s + i.Total, 0);
+          const method = data.newItems[0].Metode || lastMethod;
+          showSuccessPopup("Rp " + total.toLocaleString("id-ID"), method);
+          // Tampilkan struk setelah animasi sukses selesai
+          setTimeout(() => showReceipt(data.newItems, total, method), 4600);
+        }
+      });
+
+      // ===== RECEIPT/STRUK =====
+      function showReceipt(items, total, method) {
+        const overlay = document.getElementById("receipt-overlay");
+
+        // Tanggal & waktu
+        document.getElementById("receipt-date-buyer").textContent = new Date().toLocaleString("id-ID");
+        document.getElementById("receipt-kasir").textContent = items[0].Kasir ? "Kasir: " + items[0].Kasir : "";
+        document.getElementById("receipt-method-buyer").textContent = method;
+        document.getElementById("receipt-no").textContent = "#" + Date.now().toString().slice(-6);
+
+        // Items
+        const itemsEl = document.getElementById("receipt-items-buyer");
+        itemsEl.innerHTML = items.map((item, idx) => `
+          <div class="receipt-fade" style="animation-delay:${idx * 80}ms">
+            <div class="flex justify-between text-[11px]">
+              <span class="font-bold">${item.Menu}</span>
+              <span>Rp ${item.Total.toLocaleString("id-ID")}</span>
+            </div>
+            <div class="text-[9px] text-gray-400 ml-2">${item.Qty}x @ Rp ${(item.Total / item.Qty).toLocaleString("id-ID")}</div>
+          </div>
+        `).join("");
+
+        // Total
+        document.getElementById("receipt-total-buyer").textContent = "Rp " + total.toLocaleString("id-ID");
+
+        // Cash info (hide for QRIS)
+        document.getElementById("receipt-cash-info").classList.add("hidden");
+
+        overlay.classList.remove("hidden");
+        vibrateDevice(30);
+
+        // Auto-close setelah 15 detik
+        setTimeout(() => closeReceipt(), 15000);
+      }
+
+      function closeReceipt(e) {
+        if (e && e.target && e.target.id !== 'receipt-overlay') return;
+        document.getElementById("receipt-overlay").classList.add("hidden");
+      }
+
+      function showSuccessPopup(total, method) {
+        vibrateDevice([100, 50, 100, 50, 200]);
+        const overlay = document.getElementById("success-overlay");
+        document.getElementById("success-total").textContent = total;
+        document.getElementById("success-method").textContent = method;
+        overlay.classList.remove("hidden"); overlay.classList.add("flex");
+
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+            const osc = ctx.createOscillator(), gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'sine'; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.13);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.13 + 0.4);
+            osc.start(ctx.currentTime + i * 0.13);
+            osc.stop(ctx.currentTime + i * 0.13 + 0.4);
+          });
+        } catch(e) {}
+
+        const cc = document.getElementById("success-confetti");
+        cc.innerHTML = "";
+        const cols = ['#ea580c','#f97316','#10b981','#3b82f6','#8b5cf6','#ec4899','#fbbf24','#ef4444','#22d3ee'];
+        for (let i = 0; i < 60; i++) {
+          const c = document.createElement('div');
+          const sz = Math.random() * 8 + 4;
+          const shapes = ['50%','2px','0'];
+          c.style.cssText = `position:fixed;top:-20px;left:${Math.random()*100}%;width:${sz}px;height:${Math.random()>0.5?sz:sz*2.5}px;background:${cols[Math.floor(Math.random()*cols.length)]};border-radius:${shapes[Math.floor(Math.random()*3)]};animation:confettiFall ${Math.random()*2.5+2}s ease-in ${Math.random()}s forwards;pointer-events:none;`;
+          cc.appendChild(c);
+        }
+
+        setTimeout(() => { overlay.classList.add("hidden"); overlay.classList.remove("flex"); cc.innerHTML = ""; }, 4500);
+      }
+
+      // ===== AUTO RECONNECT =====
+      socket.on("network-changed", (data) => {
+        console.log("Jaringan berubah:", data);
+        connStatus.textContent = "Reconnect...";
+      });
+      socket.on("disconnect", () => {
+        connDot.className = "w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse";
+        connStatus.textContent = "Offline";
+        connStatus.className = "text-[9px] font-bold text-red-400/60 uppercase tracking-[0.2em]";
+      });
+      socket.on("connect", () => {
+        connDot.className = "w-2.5 h-2.5 rounded-full bg-green-500 live-pulse";
+        connStatus.textContent = "Live";
+        connStatus.className = "text-[9px] font-bold text-green-400/60 uppercase tracking-[0.2em]";
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code Meja - Warkop Urban</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    body { background: #f1f5f9; min-height: 100vh; }
+
+    /* ===== CONTROL BAR ===== */
+    .control-bar {
+      background: white; padding: 16px 24px; display: flex; align-items: center; gap: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 10; flex-wrap: wrap;
+    }
+    .control-bar h1 { font-size: 18px; font-weight: 900; color: #1e293b; }
+    .control-bar h1 span { background: linear-gradient(135deg, #ea580c, #dc2626); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .control-bar label { font-size: 13px; font-weight: 700; color: #64748b; }
+    .control-bar input {
+      width: 70px; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 12px;
+      font-weight: 800; text-align: center; font-size: 14px; outline: none;
+    }
+    .control-bar input:focus { border-color: #ea580c; }
+    .btn {
+      padding: 10px 20px; border-radius: 12px; font-weight: 800; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.1em; border: none; cursor: pointer;
+      transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-orange { background: linear-gradient(135deg, #ea580c, #dc2626); color: white; box-shadow: 0 4px 15px rgba(234,88,12,0.3); }
+    .btn-orange:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(234,88,12,0.4); }
+    .btn-orange:active { transform: scale(0.97); }
+    .btn-print { background: #1e293b; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+    .btn-print:hover { background: #0f172a; }
+
+    /* ===== QR GRID ===== */
+    .qr-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px; padding: 24px; max-width: 1200px; margin: 0 auto;
+    }
+
+    /* ===== QR CARD ===== */
+    .qr-card {
+      background: white; border-radius: 20px; padding: 28px 20px 24px;
+      text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      border: 2px solid #f1f5f9; position: relative; overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .qr-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(234,88,12,0.1); }
+    .qr-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+      background: linear-gradient(90deg, #ea580c, #f97316, #dc2626);
+    }
+    .qr-card .meja-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, #ea580c, #dc2626); color: white;
+      padding: 6px 18px; border-radius: 50px; font-weight: 900; font-size: 14px;
+      margin-bottom: 16px; box-shadow: 0 4px 15px rgba(234,88,12,0.3);
+    }
+    .qr-card .qr-wrapper {
+      background: white; padding: 12px; border-radius: 16px; display: inline-block;
+      border: 2px solid #f1f5f9; margin-bottom: 14px;
+    }
+    .qr-card .shop-name {
+      font-weight: 900; font-size: 15px; color: #1e293b; margin-bottom: 2px;
+      text-transform: uppercase; letter-spacing: -0.02em;
+    }
+    .qr-card .shop-name span {
+      background: linear-gradient(135deg, #ea580c, #dc2626);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .qr-card .instruction {
+      font-size: 11px; font-weight: 700; color: #94a3b8; margin-top: 8px;
+      line-height: 1.5;
+    }
+    .qr-card .scan-text {
+      font-size: 10px; font-weight: 800; color: #ea580c; text-transform: uppercase;
+      letter-spacing: 0.15em; margin-top: 10px; display: flex; align-items: center;
+      justify-content: center; gap: 6px;
+    }
+    .qr-card .scan-text::before, .qr-card .scan-text::after {
+      content: ''; width: 20px; height: 1px; background: #fed7aa;
+    }
+    .qr-card .coffee-icon { font-size: 20px; margin-bottom: 6px; }
+
+    /* ===== PRINT STYLES ===== */
+    @media print {
+      .control-bar { display: none !important; }
+      body { background: white; }
+      .qr-grid { padding: 10px; gap: 12px; grid-template-columns: repeat(3, 1fr); }
+      .qr-card {
+        page-break-inside: avoid; box-shadow: none;
+        border: 2px solid #ddd; padding: 16px 12px 14px;
+      }
+      .qr-card:hover { transform: none; }
+      .qr-card .qr-wrapper { padding: 8px; }
+      .qr-card .meja-badge { font-size: 12px; padding: 4px 14px; }
+    }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 640px) {
+      .qr-grid { grid-template-columns: 1fr; padding: 16px; gap: 16px; }
+      .control-bar { padding: 12px 16px; }
+      .control-bar h1 { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="control-bar">
+    <h1>&#9749; Warkop <span>Urban</span></h1>
+    <span id="url-mode" style="font-size:11px;font-weight:800;background:#ecfdf5;color:#059669;padding:4px 12px;border-radius:50px;"></span>
+    <div style="flex:1"></div>
+    <label>Jumlah Meja:</label>
+    <input type="number" id="meja-count" value="10" min="1" max="50" onchange="generateAll()" />
+    <button class="btn btn-orange" onclick="generateAll()">&#9889; Generate</button>
+    <button class="btn btn-print" onclick="window.print()">&#128424; Cetak</button>
+    <a href="/" class="btn" style="background:#f1f5f9;color:#64748b;font-size:10px;">&#8592; Kembali</a>
+  </div>
+
+  <div class="qr-grid" id="qr-grid"></div>
+
+  <script>
+    async function generateAll() {
+      const count = parseInt(document.getElementById('meja-count').value) || 10;
+      const grid = document.getElementById('qr-grid');
+      grid.innerHTML = '';
+
+      let baseURL;
+      try {
+        const info = await (await fetch('/api/server-info')).json();
+        if (info.publicURL) {
+          baseURL = info.publicURL;
+        } else {
+          baseURL = `http://${info.ip}:${info.port}`;
+        }
+      } catch(e) {
+        baseURL = `${location.protocol}//${location.host}`;
+      }
+
+      // Show which URL mode
+      const modeLabel = document.getElementById('url-mode');
+      if (modeLabel) modeLabel.textContent = baseURL.includes('loca.lt') || baseURL.includes('localtunnel') ? '🌐 Internet (publik)' : '📶 WiFi lokal';
+
+      for (let i = 1; i <= count; i++) {
+        const url = `${baseURL}/pesan?meja=${i}`;
+        const card = document.createElement('div');
+        card.className = 'qr-card';
+        card.innerHTML = `
+          <div class="coffee-icon">&#9749;</div>
+          <div class="shop-name">Warkop <span>Urban</span></div>
+          <div class="meja-badge">&#127834; MEJA ${i}</div>
+          <div class="qr-wrapper"><div id="qr-${i}"></div></div>
+          <div class="scan-text">Scan untuk pesan</div>
+          <div class="instruction">
+            Buka kamera HP &#8594; Arahkan ke QR<br>
+            Pilih menu &#8594; Pesan langsung dari meja
+          </div>
+        `;
+        grid.appendChild(card);
+        new QRCode(document.getElementById(`qr-${i}`), {
+          text: url, width: 180, height: 180,
+          colorDark: '#1e293b', colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
+    }
+    generateAll();
+  </script>
+</body>
+</html>
