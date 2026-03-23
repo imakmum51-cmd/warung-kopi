@@ -1,4 +1,5 @@
 node_modules/
+.claude/
 warkop.db
 warkop.db-shm
 warkop.db-wal
