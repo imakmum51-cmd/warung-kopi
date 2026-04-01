@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icon-192.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    <title>Warkop Urban</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script>
+      tailwind.config = { theme: { extend: { fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } } };
+    </script>
+    <style>
+      * { font-family: "Plus Jakarta Sans", sans-serif; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #050505; min-height: 100dvh; overflow-x: hidden; }
+      .mesh-bg {
+        position: fixed; inset: 0; z-index: 0;
+        background:
+          radial-gradient(ellipse 60% 50% at 10% 20%, rgba(234,88,12,0.12) 0%, transparent 50%),
+          radial-gradient(ellipse 50% 60% at 90% 80%, rgba(124,58,237,0.08) 0%, transparent 50%);
+      }
+      .glass-card { background: rgba(255,255,255,0.05); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.08); }
+      .gradient-text { background: linear-gradient(135deg, #fb923c, #f97316, #ea580c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+      .btn-primary {
+        background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+        box-shadow: 0 8px 25px rgba(234,88,12,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+        transition: all 0.3s ease;
+      }
+      .btn-primary:active { transform: translateY(2px) scale(0.98); }
+      .menu-card { transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+      .menu-card:active { transform: scale(0.96); }
+      .custom-scroll::-webkit-scrollbar { width: 3px; }
+      .custom-scroll::-webkit-scrollbar-thumb { background: rgba(234,88,12,0.2); border-radius: 10px; }
+      .cat-pill { transition: all 0.3s ease; white-space: nowrap; }
+      .cat-pill.active { background: linear-gradient(135deg, #ea580c, #dc2626); color: white; box-shadow: 0 4px 20px rgba(234,88,12,0.35); border-color: transparent !important; }
+      .tipe-btn.active, .metode-btn.active { background: linear-gradient(135deg, rgba(234,88,12,0.25), rgba(220,38,38,0.15)) !important; border-color: rgba(234,88,12,0.6) !important; box-shadow: 0 4px 15px rgba(234,88,12,0.2); }
+      .qty-btn { transition: all 0.2s ease; }
+      .qty-btn:active { transform: scale(0.85); }
+      .hide-scrollbar::-webkit-scrollbar { display: none; }
+      .fade-up { animation: fadeUp 0.5s ease forwards; opacity: 0; }
+      @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+      .item-disabled { opacity: 0.45; pointer-events: none; }
+      .habis-badge { position: absolute; top: 10px; right: 10px; background: rgba(220,38,38,0.9); color: white; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 20px; }
+      .cart-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+      .cart-overlay.show { opacity: 1; visibility: visible; }
+      .cart-panel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 95; max-height: 90vh; background: rgba(20,20,20,0.98); backdrop-filter: blur(40px); border-top: 1px solid rgba(255,255,255,0.1); border-radius: 24px 24px 0 0; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32,0.72,0,1); overflow-y: auto; }
+      .cart-panel.show { transform: translateY(0); }
+      .cart-fab { position: fixed; bottom: 24px; right: 20px; z-index: 80; background: linear-gradient(135deg, #ea580c, #dc2626); box-shadow: 0 8px 30px rgba(234,88,12,0.4); transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+      .cart-fab:active { transform: scale(0.9); }
+      .cart-fab .badge { position: absolute; top: -6px; right: -6px; background: #fff; color: #ea580c; min-width: 22px; height: 22px; border-radius: 11px; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+      .success-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(5,5,5,0.95); backdrop-filter: blur(20px); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow-y: auto; padding: 24px 16px; opacity: 0; visibility: hidden; transition: all 0.4s ease; }
+      .success-overlay.show { opacity: 1; visibility: visible; }
+      .checkmark-circle { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #ea580c, #dc2626); display: flex; align-items: center; justify-content: center; animation: checkPop 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards; transform: scale(0); }
+      @keyframes checkPop { 0% { transform: scale(0) rotate(-45deg); } 100% { transform: scale(1) rotate(0); } }
+      .pulse-ring { position: absolute; width: 100px; height: 100px; border-radius: 50%; border: 2px solid rgba(234,88,12,0.4); animation: pulseOut 1.2s ease-out 0.3s infinite; }
+      @keyframes pulseOut { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+      .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .install-banner { position: fixed; bottom: 0; left: 0; right: 0; z-index: 300; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32,0.72,0,1); }
+      .install-banner.show { transform: translateY(0); }
+    </style>
+  </head>
+  <body>
+    <div class="mesh-bg"></div>
+
+    <!-- Install Banner -->
+    <div class="install-banner" id="install-banner">
+      <div class="mx-4 mb-4 glass-card rounded-2xl p-4 flex items-center gap-3" style="background:rgba(234,88,12,0.15); border-color:rgba(234,88,12,0.3);">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-lg flex-shrink-0">WU</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-white font-700 text-sm">Install Warkop Urban</p>
+          <p class="text-white/40 text-xs">Akses cepat dari home screen</p>
+        </div>
+        <button onclick="installApp()" class="btn-primary px-4 py-2 rounded-xl text-white font-700 text-xs flex-shrink-0">Install</button>
+        <button onclick="dismissInstall()" class="text-white/30 text-lg px-1">&times;</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="relative z-10 pb-28 custom-scroll" style="min-height:100dvh;">
+
+      <!-- Header -->
+      <header class="sticky top-0 z-50 px-4 pt-4 pb-3" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h1 class="text-xl font-800"><span class="gradient-text">Warkop Urban</span></h1>
+            <p class="text-xs text-white/40 mt-0.5">Pesan Online</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div id="status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></div>
+            <span class="text-[10px] text-white/40 font-600" id="status-text">Terhubung</span>
+          </div>
+        </div>
+
+        <!-- Alamat / Nama Pemesan -->
+        <div class="glass-card rounded-2xl px-4 py-3 mb-3" id="info-pemesan-bar">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+              <span class="text-lg">👤</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <input type="text" id="input-nama" placeholder="Nama Anda..." class="w-full bg-transparent text-white font-600 text-sm outline-none placeholder-white/30" />
+            </div>
+          </div>
+          <div class="flex items-center gap-3 mt-2">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
+              <span class="text-lg">📍</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <input type="text" id="input-alamat" placeholder="Alamat pengiriman..." class="w-full bg-transparent text-white font-600 text-sm outline-none placeholder-white/30" />
+            </div>
+          </div>
+          <div class="flex items-center gap-3 mt-2">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center">
+              <span class="text-lg">📱</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <input type="tel" id="input-telp" placeholder="No. WhatsApp..." class="w-full bg-transparent text-white font-600 text-sm outline-none placeholder-white/30" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Category -->
+        <div class="flex gap-2 overflow-x-auto hide-scrollbar -mx-1 px-1 pb-1">
+          <button class="cat-pill active glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="semua" onclick="filterCat('semua')">Semua</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="kopi" onclick="filterCat('kopi')">☕ Kopi</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="minuman" onclick="filterCat('minuman')">🧃 Minuman</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="makanan" onclick="filterCat('makanan')">🍜 Makanan</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="snack" onclick="filterCat('snack')">🍩 Snack</button>
+        </div>
+      </header>
+
+      <!-- Menu Grid -->
+      <div id="menu-grid" class="grid grid-cols-2 gap-3 px-4 mt-4"></div>
+      <div id="empty-state" class="hidden flex-col items-center justify-center py-20 px-8 text-center">
+        <div class="text-5xl mb-4">🍽️</div>
+        <p class="text-white/40 text-sm">Tidak ada menu di kategori ini</p>
+      </div>
+      <div id="loading-state" class="flex flex-col items-center justify-center py-20">
+        <div class="spinner" style="width:32px;height:32px;border-width:3px;"></div>
+        <p class="text-white/40 text-sm mt-4">Memuat menu...</p>
+      </div>
+    </div>
+
+    <!-- Cart FAB -->
+    <button id="cart-fab" class="cart-fab hidden w-14 h-14 rounded-full flex items-center justify-center" onclick="toggleCart()">
+      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
+      <span class="badge" id="cart-badge">0</span>
+    </button>
+
+    <!-- Cart Overlay & Panel -->
+    <div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
+    <div class="cart-panel" id="cart-panel">
+      <div class="p-5">
+        <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5"></div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-white font-800 text-lg">Keranjang</h2>
+          <button class="text-white/40 text-sm font-600 hover:text-red-400 transition-colors" onclick="clearCart()">Hapus Semua</button>
+        </div>
+        <div id="cart-items" class="space-y-3 max-h-[30vh] overflow-y-auto custom-scroll pr-1"></div>
+        <div id="cart-empty" class="text-center py-8">
+          <div class="text-4xl mb-3">🛒</div>
+          <p class="text-white/30 text-sm">Keranjang masih kosong</p>
+        </div>
+        <div id="cart-footer" class="hidden mt-5 pt-4 border-t border-white/10">
+          <!-- Tipe Pesanan -->
+          <div class="mb-4">
+            <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Tipe Pesanan</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="tipe-btn active glass-card rounded-xl py-3 px-4 flex items-center justify-center gap-2 border border-white/5 transition-all" data-tipe="Dine In" onclick="pilihTipe('Dine In')">
+                <span class="text-lg">🍽️</span><span class="text-white font-600 text-sm">Dine In</span>
+              </button>
+              <button class="tipe-btn glass-card rounded-xl py-3 px-4 flex items-center justify-center gap-2 border border-white/5 transition-all" data-tipe="Take Away" onclick="pilihTipe('Take Away')">
+                <span class="text-lg">📦</span><span class="text-white font-600 text-sm">Take Away</span>
+              </button>
+            </div>
+          </div>
+          <!-- Metode Pembayaran -->
+          <div class="mb-4">
+            <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Metode Pembayaran</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="metode-btn active glass-card rounded-xl py-3 px-4 flex items-center justify-center gap-2 border border-white/5 transition-all" data-metode="Tunai" onclick="pilihMetode('Tunai')">
+                <span class="text-lg">💵</span><span class="text-white font-600 text-sm">Tunai</span>
+              </button>
+              <button class="metode-btn glass-card rounded-xl py-3 px-4 flex items-center justify-center gap-2 border border-white/5 transition-all" data-metode="QRIS" onclick="pilihMetode('QRIS')">
+                <span class="text-lg">📱</span><span class="text-white font-600 text-sm">QRIS</span>
+              </button>
+            </div>
+          </div>
+          <!-- Catatan -->
+          <div class="mb-4">
+            <textarea id="input-catatan" rows="2" placeholder="Catatan tambahan (opsional)..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-500 outline-none placeholder-white/30 resize-none"></textarea>
+          </div>
+          <!-- Total -->
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-white/60 font-600">Total</span>
+            <span class="text-xl font-900 gradient-text" id="cart-total">Rp 0</span>
+          </div>
+          <button id="btn-submit" class="btn-primary w-full py-4 rounded-2xl text-white font-700 text-base flex items-center justify-center gap-2" onclick="submitOrder()">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            Kirim Pesanan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div class="success-overlay" id="success-overlay">
+      <div class="relative mb-8">
+        <div class="pulse-ring"></div>
+        <div class="checkmark-circle">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+        </div>
+      </div>
+      <h2 class="text-white text-2xl font-800 mb-2">Pesanan Berhasil!</h2>
+      <p class="text-white/50 text-sm text-center max-w-[260px] leading-relaxed" id="success-desc">Pesanan Anda telah dikirim ke Warkop Urban. Kami akan segera memprosesnya.</p>
+      <div id="success-qris" class="hidden mt-5 flex flex-col items-center">
+        <div class="bg-white p-3 rounded-3xl shadow-2xl shadow-black/40">
+          <img src="/qris.png.png" class="w-52 h-52 object-contain" alt="QRIS" />
+        </div>
+        <p class="text-orange-400 text-xs font-700 mt-3 uppercase tracking-wider">Scan QRIS untuk bayar</p>
+      </div>
+      <div class="mt-5 glass-card rounded-2xl px-6 py-4 flex flex-col gap-3 min-w-[220px]">
+        <div class="flex items-center justify-between">
+          <span class="text-white/40 text-sm">Nama</span>
+          <span class="text-white font-700 text-sm" id="success-nama">-</span>
+        </div>
+        <div class="border-t border-white/10"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-white/40 text-sm">Tipe</span>
+          <span class="text-white font-700 text-sm" id="success-tipe">🍽️ Dine In</span>
+        </div>
+        <div class="border-t border-white/10"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-white/40 text-sm">Pembayaran</span>
+          <span class="text-white font-700 text-sm" id="success-metode">💵 Tunai</span>
+        </div>
+        <div class="border-t border-white/10"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-white/40 text-sm">Total</span>
+          <span class="text-lg font-900 gradient-text" id="success-total">Rp 0</span>
+        </div>
+      </div>
+      <button class="mt-6 text-white/40 text-sm font-600 underline underline-offset-4" onclick="resetPage()">Pesan lagi</button>
+    </div>
+
+    <!-- Order Ready Popup -->
+    <div class="fixed inset-0 z-[250] flex items-center justify-center p-6 opacity-0 pointer-events-none" id="order-ready-overlay" style="transition:opacity 0.4s ease; background:rgba(5,5,5,0.92); backdrop-filter:blur(20px);">
+      <div class="flex flex-col items-center text-center">
+        <div class="relative mb-6">
+          <div class="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center" id="ready-icon"><span class="text-5xl">🎉</span></div>
+          <div class="absolute inset-0 w-24 h-24 rounded-full border-2 border-emerald-400/40" style="animation:pulseOut 1.2s ease-out 0.3s infinite;"></div>
+        </div>
+        <h2 class="text-white text-2xl font-800 mb-2">Pesanan Siap!</h2>
+        <p class="text-white/50 text-sm text-center max-w-[280px] leading-relaxed mb-6">Pesanan Anda sudah selesai disiapkan!</p>
+        <button onclick="closeOrderReady()" class="px-8 py-3 rounded-2xl text-white font-700 text-sm" style="background:linear-gradient(135deg,#059669,#10b981);">OK, Terima Kasih!</button>
+      </div>
+    </div>
+
+    <script>
+      // ============================
+      // State
+      // ============================
+      let menuData = [];
+      let cart = {};
+      let currentCat = "semua";
+      let isSubmitting = false;
+      let tipePesanan = "Dine In";
+      let metodePembayaran = "Tunai";
+      const socket = io();
+      const EMOJI = { makanan: "🍜", minuman: "🧃", kopi: "☕", snack: "🍩" };
+
+      // ============================
+      // PWA Install
+      // ============================
+      let deferredPrompt = null;
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        setTimeout(() => document.getElementById("install-banner").classList.add("show"), 2000);
+      });
+      function installApp() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => { deferredPrompt = null; dismissInstall(); });
+      }
+      function dismissInstall() {
+        document.getElementById("install-banner").classList.remove("show");
+      }
+
+      // ============================
+      // Service Worker & Push
+      // ============================
+      async function setupPush() {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+        try {
+          const reg = await navigator.serviceWorker.register("/sw.js");
+          const perm = await Notification.requestPermission();
+          if (perm !== "granted") return;
+          const vapidRes = await fetch("/api/vapid-public-key");
+          const { publicKey } = await vapidRes.json();
+          const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+          await fetch("/api/push-subscribe", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ meja: "online", subscription: sub }),
+          });
+        } catch (e) { console.log("Push setup:", e); }
+      }
+      function urlBase64ToUint8Array(b) {
+        const p = "=".repeat((4 - (b.length % 4)) % 4);
+        const raw = atob((b + p).replace(/-/g, "+").replace(/_/g, "/"));
+        const a = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i);
+        return a;
+      }
+      document.addEventListener("click", function f() { setupPush(); document.removeEventListener("click", f); }, { once: true });
+
+      // ============================
+      // Load Menu
+      // ============================
+      async function loadMenu() {
+        try {
+          const res = await fetch("/api/menu");
+          menuData = await res.json();
+          document.getElementById("loading-state").classList.add("hidden");
+          renderMenu();
+        } catch (e) {
+          document.getElementById("loading-state").innerHTML = '<p class="text-red-400 text-sm">Gagal memuat menu</p>';
+        }
+      }
+      loadMenu();
+
+      // ============================
+      // Render Menu
+      // ============================
+      function renderMenu() {
+        const grid = document.getElementById("menu-grid");
+        const empty = document.getElementById("empty-state");
+        const filtered = currentCat === "semua" ? menuData : menuData.filter(m => m.kategori === currentCat);
+        if (filtered.length === 0) { grid.innerHTML = ""; empty.classList.remove("hidden"); empty.classList.add("flex"); return; }
+        empty.classList.add("hidden"); empty.classList.remove("flex");
+        grid.innerHTML = filtered.map((item, i) => {
+          const out = item.stok <= 0 || !item.tersedia;
+          const inCart = cart[item.id];
+          const emoji = EMOJI[item.kategori] || "🍽️";
+          return `
+            <div class="menu-card glass-card rounded-2xl p-4 relative fade-up ${out ? 'item-disabled' : ''}" style="animation-delay:${i*0.05}s" ${!out ? `onclick="addToCart(${item.id})"` : ""}>
+              ${out ? '<div class="habis-badge">Habis</div>' : ''}
+              <div class="text-3xl mb-2">${emoji}</div>
+              <h3 class="text-white font-700 text-sm leading-tight mb-1 line-clamp-2">${item.nama}</h3>
+              <p class="text-xs text-white/30 capitalize mb-2">${item.kategori}</p>
+              <div class="flex items-end justify-between">
+                <span class="gradient-text font-800 text-sm">Rp ${item.harga.toLocaleString("id-ID")}</span>
+                ${!out && inCart ? `
+                  <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                    <button class="qty-btn w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-sm font-700" onclick="event.stopPropagation();changeQty(${item.id},-1)">-</button>
+                    <span class="text-white font-700 text-sm w-6 text-center">${inCart.qty}</span>
+                    <button class="qty-btn w-7 h-7 rounded-full bg-orange-600 text-white flex items-center justify-center text-sm font-700" onclick="event.stopPropagation();changeQty(${item.id},1)">+</button>
+                  </div>
+                ` : (!out ? '<div class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.5)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg></div>' : '')}
+              </div>
+              ${!out && item.stok <= 5 ? `<p class="text-[10px] text-orange-400/70 mt-1">Sisa ${item.stok}</p>` : ''}
+            </div>`;
+        }).join("");
+      }
+
+      // ============================
+      // Category, Cart, Tipe, Metode
+      // ============================
+      function filterCat(c) { currentCat = c; document.querySelectorAll(".cat-pill").forEach(b => b.classList.toggle("active", b.dataset.cat === c)); renderMenu(); }
+      function pilihTipe(t) { tipePesanan = t; document.querySelectorAll(".tipe-btn").forEach(b => b.classList.toggle("active", b.dataset.tipe === t)); }
+      function pilihMetode(m) { metodePembayaran = m; document.querySelectorAll(".metode-btn").forEach(b => b.classList.toggle("active", b.dataset.metode === m)); }
+
+      function addToCart(id) {
+        const item = menuData.find(m => m.id === id);
+        if (!item || item.stok <= 0) return;
+        if (cart[id]) { if (cart[id].qty >= item.stok) return; cart[id].qty++; }
+        else { cart[id] = { id: item.id, nama: item.nama, harga: item.harga, qty: 1 }; }
+        const fab = document.getElementById("cart-fab"); fab.classList.remove("hidden"); fab.classList.add("flex");
+        updateCartUI(); renderMenu();
+      }
+      function changeQty(id, d) {
+        if (!cart[id]) return;
+        const item = menuData.find(m => m.id === id);
+        const nq = cart[id].qty + d;
+        if (nq <= 0) delete cart[id]; else if (item && nq <= item.stok) cart[id].qty = nq; else return;
+        updateCartUI(); renderMenu();
+      }
+      function clearCart() { cart = {}; updateCartUI(); renderMenu(); toggleCart(); }
+      function getCartCount() { return Object.values(cart).reduce((s, i) => s + i.qty, 0); }
+      function getCartTotal() { return Object.values(cart).reduce((s, i) => s + i.harga * i.qty, 0); }
+
+      function updateCartUI() {
+        const count = getCartCount(), total = getCartTotal();
+        const fab = document.getElementById("cart-fab"), badge = document.getElementById("cart-badge");
+        const items = document.getElementById("cart-items"), empty = document.getElementById("cart-empty"), footer = document.getElementById("cart-footer"), totalEl = document.getElementById("cart-total");
+        if (count > 0) { fab.classList.remove("hidden"); fab.classList.add("flex"); badge.textContent = count; } else { fab.classList.add("hidden"); fab.classList.remove("flex"); }
+        const list = Object.values(cart);
+        if (list.length === 0) { items.classList.add("hidden"); empty.classList.remove("hidden"); footer.classList.add("hidden"); }
+        else {
+          items.classList.remove("hidden"); empty.classList.add("hidden"); footer.classList.remove("hidden");
+          items.innerHTML = list.map(item => {
+            const emoji = EMOJI[menuData.find(m => m.id === item.id)?.kategori] || "🍽️";
+            return `<div class="glass-card rounded-xl p-3 flex items-center gap-3">
+              <div class="text-2xl">${emoji}</div>
+              <div class="flex-1 min-w-0"><p class="text-white font-600 text-sm truncate">${item.nama}</p><p class="text-white/40 text-xs">Rp ${item.harga.toLocaleString("id-ID")}</p></div>
+              <div class="flex items-center gap-2">
+                <button class="qty-btn w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-sm font-700" onclick="changeQty(${item.id},-1)">-</button>
+                <span class="text-white font-700 text-sm w-5 text-center">${item.qty}</span>
+                <button class="qty-btn w-7 h-7 rounded-full bg-orange-600 text-white flex items-center justify-center text-sm font-700" onclick="changeQty(${item.id},1)">+</button>
+              </div>
+              <span class="text-white font-700 text-sm ml-1 min-w-[60px] text-right">Rp ${(item.harga * item.qty).toLocaleString("id-ID")}</span>
+            </div>`;
+          }).join("");
+          totalEl.textContent = `Rp ${total.toLocaleString("id-ID")}`;
+        }
+      }
+
+      function toggleCart() {
+        const o = document.getElementById("cart-overlay"), p = document.getElementById("cart-panel");
+        if (p.classList.contains("show")) { o.classList.remove("show"); p.classList.remove("show"); }
+        else { o.classList.add("show"); p.classList.add("show"); }
+      }
+
+      // ============================
+      // Submit Order
+      // ============================
+      function submitOrder() {
+        if (isSubmitting || getCartCount() === 0) return;
+        const nama = document.getElementById("input-nama").value.trim();
+        const alamat = document.getElementById("input-alamat").value.trim();
+        const telp = document.getElementById("input-telp").value.trim();
+        if (!nama) { alert("Masukkan nama Anda!"); return; }
+        if (!telp) { alert("Masukkan no. WhatsApp!"); return; }
+        isSubmitting = true;
+        const btn = document.getElementById("btn-submit");
+        btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Mengirim...';
+        const items = Object.values(cart).map(i => ({ menuId: i.id, nama: i.nama, qty: i.qty, harga: i.harga }));
+        socket.emit("online-order", {
+          nama, alamat, telp, items, total: getCartTotal(),
+          metode: metodePembayaran, tipe: tipePesanan,
+          catatan: document.getElementById("input-catatan").value.trim(),
+        });
+        setTimeout(() => {
+          toggleCart();
+          setTimeout(() => {
+            document.getElementById("success-nama").textContent = nama;
+            document.getElementById("success-tipe").textContent = tipePesanan === "Take Away" ? "📦 Take Away" : "🍽️ Dine In";
+            document.getElementById("success-metode").textContent = metodePembayaran === "QRIS" ? "📱 QRIS" : "💵 Tunai";
+            document.getElementById("success-total").textContent = `Rp ${getCartTotal().toLocaleString("id-ID")}`;
+            const qris = document.getElementById("success-qris");
+            if (metodePembayaran === "QRIS") { qris.classList.remove("hidden"); qris.classList.add("flex"); document.getElementById("success-desc").textContent = "Silakan scan QRIS untuk menyelesaikan pembayaran."; }
+            else { qris.classList.add("hidden"); qris.classList.remove("flex"); document.getElementById("success-desc").textContent = "Pesanan Anda telah dikirim ke Warkop Urban. Kami akan segera memprosesnya."; }
+            document.getElementById("success-overlay").classList.add("show");
+          }, 300);
+        }, 800);
+      }
+
+      function resetPage() {
+        cart = {}; isSubmitting = false; tipePesanan = "Dine In"; metodePembayaran = "Tunai";
+        const btn = document.getElementById("btn-submit"); btn.disabled = false;
+        btn.innerHTML = '<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Kirim Pesanan';
+        document.getElementById("success-overlay").classList.remove("show");
+        document.querySelectorAll(".tipe-btn").forEach(b => b.classList.toggle("active", b.dataset.tipe === "Dine In"));
+        document.querySelectorAll(".metode-btn").forEach(b => b.classList.toggle("active", b.dataset.metode === "Tunai"));
+        document.getElementById("input-catatan").value = "";
+        updateCartUI(); renderMenu(); loadMenu();
+      }
+
+      // ============================
+      // Socket
+      // ============================
+      socket.on("connect", () => {
+        socket.emit("identify", { role: "pelanggan", username: "online-app" });
+        document.getElementById("status-dot").className = "w-2 h-2 rounded-full bg-emerald-500";
+        document.getElementById("status-text").textContent = "Terhubung";
+      });
+      socket.on("disconnect", () => {
+        document.getElementById("status-dot").className = "w-2 h-2 rounded-full bg-red-500";
+        document.getElementById("status-text").textContent = "Terputus";
+      });
+      socket.on("sync-data", (d) => { if (d.menu) { menuData = d.menu; renderMenu(); } });
+      socket.on("transaction-update", (d) => { if (d.menu) { menuData = d.menu; renderMenu(); } });
+      socket.on("order-ready", (d) => {
+        if (!d || d.meja !== "online") return;
+        showOrderReady();
+      });
+
+      function showOrderReady() {
+        const o = document.getElementById("order-ready-overlay");
+        o.style.opacity = "1"; o.style.pointerEvents = "auto";
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          [830,1046,1318,1046,1318,1568].forEach((f,i) => {
+            const osc = ctx.createOscillator(), g = ctx.createGain();
+            osc.connect(g); g.connect(ctx.destination); osc.type="sine"; osc.frequency.value=f;
+            g.gain.setValueAtTime(0.5,ctx.currentTime+i*0.25); g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+i*0.25+0.4);
+            osc.start(ctx.currentTime+i*0.25); osc.stop(ctx.currentTime+i*0.25+0.4);
+          });
+        } catch(e){}
+        if ("Notification" in window && Notification.permission === "granted") {
+          try { new Notification("🎉 Pesanan Siap! — Warkop Urban", { body: "Pesanan Anda sudah selesai!", icon: "/icon-192.svg", tag: "order-ready" }); } catch(e){}
+        }
+      }
+      function closeOrderReady() {
+        const o = document.getElementById("order-ready-overlay");
+        o.style.opacity = "0"; o.style.pointerEvents = "none";
+      }
+    </script>
+  </body>
+</html>
