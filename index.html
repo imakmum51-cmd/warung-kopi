@@ -900,6 +900,31 @@
         #customer-orders-panel { right: 8px; left: 8px; width: auto; bottom: 90px; max-height: 40vh; }
       }
 
+      /* Toast Notif Pesanan */
+      .order-toast {
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-120%);
+        z-index: 999; min-width: 320px; max-width: 90vw; border-radius: 20px; padding: 16px 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3); backdrop-filter: blur(20px);
+        animation: toastSlideDown 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        cursor: pointer;
+      }
+      .order-toast.toast-qr {
+        background: linear-gradient(135deg, rgba(16,185,129,0.95), rgba(5,150,105,0.95));
+        border: 2px solid rgba(52,211,153,0.5);
+      }
+      .order-toast.toast-online {
+        background: linear-gradient(135deg, rgba(139,92,246,0.95), rgba(109,40,217,0.95));
+        border: 2px solid rgba(167,139,250,0.5);
+      }
+      @keyframes toastSlideDown {
+        from { transform: translateX(-50%) translateY(-120%); }
+        to { transform: translateX(-50%) translateY(0); }
+      }
+      @keyframes toastSlideUp {
+        from { transform: translateX(-50%) translateY(0); opacity: 1; }
+        to { transform: translateX(-50%) translateY(-120%); opacity: 0; }
+      }
+
       /* ===== MOBILE CART OVERLAY ===== */
       #mobile-cart-overlay {
         display: none;
@@ -6271,10 +6296,12 @@
           ).join('');
           const onlineInfo = order.isOnline ? `
             <div class="px-3 py-2 bg-purple-50 border-b border-purple-100 space-y-0.5">
+              ${order.kodePesanan ? `<div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Kode</span><span class="text-purple-700 font-black">${order.kodePesanan}</span></div>` : ''}
               <div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Nama</span><span class="text-purple-700 font-bold">${order.nama}</span></div>
               <div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Alamat</span><span class="text-purple-700 font-bold">${order.alamat}</span></div>
               <div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">WA</span><span class="text-purple-700 font-bold">${order.telp}</span></div>
               ${order.catatan ? `<div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Catatan</span><span class="text-purple-700 font-bold">${order.catatan}</span></div>` : ''}
+              ${order.diskon > 0 ? `<div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Diskon</span><span class="text-green-600 font-bold">-Rp ${order.diskon.toLocaleString('id-ID')}</span></div>` : ''}
             </div>
           ` : '';
           return `
@@ -6357,8 +6384,7 @@
       // ===== PESANAN DARI PELANGGAN (SELF-ORDER) =====
       socket.on("customer-order", (data) => {
         if (!data || !data.items) return;
-        playCustomerOrderSound();
-        // Tambah ke list QR Meja
+        playQrMejaSound();
         const orderId = 'qr-' + Date.now();
         qrMejaOrders.unshift({
           id: orderId,
@@ -6372,15 +6398,21 @@
           status: 'baru',
         });
         renderQrMejaOrders();
-        // Auto switch ke tab QR Meja
         switchOrderTab('qrmeja');
         updateTabCounts();
+        // Toast notif QR Meja
+        showOrderToast('qr', {
+          title: `🍽️ Pesanan Meja ${data.meja}`,
+          subtitle: `${data.items.length} item · ${data.tipe || 'Dine In'} · ${data.metode || 'Tunai'}`,
+          total: data.total,
+          waktu: data.waktu,
+        });
       });
 
       // ===== PESANAN ONLINE (dari app / rumah) =====
       socket.on("online-order", (data) => {
         if (!data || !data.items) return;
-        playCustomerOrderSound();
+        playOnlineOrderSound();
         const orderId = 'online-' + Date.now();
         qrMejaOrders.unshift({
           id: orderId,
@@ -6390,9 +6422,11 @@
           telp: data.telp || '-',
           items: data.items,
           total: data.total,
+          diskon: data.diskon || 0,
           metode: data.metode || 'Tunai',
           tipe: data.tipe || 'Dine In',
           catatan: data.catatan || '',
+          kodePesanan: data.kodePesanan || '',
           waktu: data.waktu || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
           status: 'baru',
           isOnline: true,
@@ -6400,23 +6434,82 @@
         renderQrMejaOrders();
         switchOrderTab('qrmeja');
         updateTabCounts();
+        // Toast notif Online
+        showOrderToast('online', {
+          title: `🌐 Pesanan Online — ${data.nama || 'Pelanggan'}`,
+          subtitle: `${data.items.length} item · ${data.tipe || 'Dine In'} · ${data.metode || 'Tunai'}`,
+          extra: data.kodePesanan ? `Kode: ${data.kodePesanan}` : '',
+          alamat: data.alamat && data.alamat !== '-' ? `📍 ${data.alamat}` : '',
+          telp: data.telp && data.telp !== '-' ? `📱 ${data.telp}` : '',
+          total: data.total - (data.diskon || 0),
+          waktu: data.waktu,
+        });
       });
 
-      function playCustomerOrderSound() {
+      // Sound: QR Meja — bell ding (high pitch, quick)
+      function playQrMejaSound() {
         try {
           const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          // Notifikasi bell sound
-          const notes = [880, 1108.73, 1318.51, 1108.73, 1318.51];
+          const notes = [1318, 1568, 2093];
           notes.forEach((freq, i) => {
             const osc = ctx.createOscillator(), gain = ctx.createGain();
             osc.connect(gain); gain.connect(ctx.destination);
             osc.type = 'sine'; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.15);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.15 + 0.25);
-            osc.start(ctx.currentTime + i * 0.15);
-            osc.stop(ctx.currentTime + i * 0.15 + 0.25);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.12 + 0.2);
+            osc.start(ctx.currentTime + i * 0.12);
+            osc.stop(ctx.currentTime + i * 0.12 + 0.2);
           });
         } catch(e) {}
+      }
+
+      // Sound: Online — longer chime melody (lower, distinct)
+      function playOnlineOrderSound() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const notes = [523, 659, 784, 1046, 784, 1046];
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator(), gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'triangle'; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.35, ctx.currentTime + i * 0.18);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.18 + 0.35);
+            osc.start(ctx.currentTime + i * 0.18);
+            osc.stop(ctx.currentTime + i * 0.18 + 0.35);
+          });
+        } catch(e) {}
+      }
+
+      // Toast notification popup
+      function showOrderToast(type, data) {
+        // Remove existing toast
+        document.querySelectorAll('.order-toast').forEach(el => el.remove());
+        const toast = document.createElement('div');
+        toast.className = `order-toast toast-${type === 'qr' ? 'qr' : 'online'}`;
+        toast.onclick = () => { toast.style.animation = 'toastSlideUp 0.3s ease forwards'; setTimeout(() => toast.remove(), 300); };
+        toast.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <span style="color:white;font-weight:900;font-size:13px;">${type === 'qr' ? '🔔 PESANAN MEJA BARU' : '🌐 PESANAN ONLINE BARU'}</span>
+            <span style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;">${data.waktu || ''}</span>
+          </div>
+          <p style="color:white;font-weight:800;font-size:14px;margin-bottom:2px;">${data.title}</p>
+          <p style="color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;">${data.subtitle}</p>
+          ${data.extra ? `<p style="color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;margin-top:4px;">${data.extra}</p>` : ''}
+          ${data.alamat ? `<p style="color:rgba(255,255,255,0.5);font-size:10px;margin-top:2px;">${data.alamat}</p>` : ''}
+          ${data.telp ? `<p style="color:rgba(255,255,255,0.5);font-size:10px;">${data.telp}</p>` : ''}
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15);">
+            <span style="color:white;font-weight:900;font-size:15px;">Rp ${(data.total || 0).toLocaleString('id-ID')}</span>
+            <span style="color:rgba(255,255,255,0.5);font-size:9px;font-weight:700;">TAP UNTUK TUTUP</span>
+          </div>
+        `;
+        document.body.appendChild(toast);
+        // Auto dismiss after 8 seconds
+        setTimeout(() => {
+          if (toast.parentElement) {
+            toast.style.animation = 'toastSlideUp 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+          }
+        }, 8000);
       }
 
       function dismissCustomerOrder(id) {
