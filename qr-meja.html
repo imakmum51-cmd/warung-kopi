@@ -129,15 +129,22 @@
       grid.innerHTML = '';
 
       let baseURL;
-      try {
-        const info = await (await fetch('/api/server-info')).json();
-        if (info.publicURL) {
-          baseURL = info.publicURL;
-        } else {
-          baseURL = `http://${info.ip}:${info.port}`;
+      // Jika diakses dari domain publik (Railway, Cloudflare, dll), gunakan URL browser
+      const currentHost = location.host;
+      const isPublic = !currentHost.includes('localhost') && !currentHost.match(/^(192\.|10\.|172\.)/);
+      if (isPublic) {
+        baseURL = `${location.protocol}//${currentHost}`;
+      } else {
+        try {
+          const info = await (await fetch('/api/server-info')).json();
+          if (info.publicURL) {
+            baseURL = info.publicURL;
+          } else {
+            baseURL = `http://${info.ip}:${info.port}`;
+          }
+        } catch(e) {
+          baseURL = `${location.protocol}//${currentHost}`;
         }
-      } catch(e) {
-        baseURL = `${location.protocol}//${location.host}`;
       }
 
       // Show which URL mode
