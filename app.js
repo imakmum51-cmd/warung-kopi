@@ -8,6 +8,15 @@ const Database = require("better-sqlite3");
 const { Bonjour } = require("bonjour-service");
 const qrTerminal = require("qrcode-terminal");
 const { execFile } = require("child_process");
+const webPush = require("web-push");
+
+// VAPID keys untuk Web Push Notification
+const VAPID_PUBLIC = "BGKT-gWNrYZOpexlInpmHplFViy-459BzLUAxggBKQStkQwBuX_TDH-z6sFiFap6hVCoqoGhXznwI7Y27qj0P5Y";
+const VAPID_PRIVATE = "YaAvbE4CSgYXCC1Oym_OC__8u5jq8Ru1PFfWnz8eRtM";
+webPush.setVapidDetails("mailto:warkop@urban.local", VAPID_PUBLIC, VAPID_PRIVATE);
+
+// Simpan push subscriptions per meja
+const pushSubscriptions = {}; // { meja: [subscription, ...] }
 
 app.use(express.json());
 
@@ -15,24 +24,43 @@ app.use(express.json());
 // 1. KONFIGURASI ROLE & AKUN
 // ============================================
 const AKUN = [
-  { username: "admin",  pin: "0000", role: "admin"  },
-  { username: "owner",  pin: "1234", role: "owner"  },
-  { username: "budi",   pin: "1111", role: "kasir"  },
-  { username: "sari",   pin: "2222", role: "kasir"  },
+  { username: "admin", pin: "0000", role: "admin" },
+  { username: "owner", pin: "1234", role: "owner" },
+  { username: "budi", pin: "1111", role: "kasir" },
+  { username: "sari", pin: "2222", role: "kasir" },
 ];
 
 // Hak akses per role
 const HAK_AKSES = {
-  admin:  ["transaksi", "laporan_harian", "laporan_keuangan", "kelola_menu", "kelola_stok", "manajemen_user", "setting", "void"],
-  owner:  ["transaksi", "laporan_harian", "laporan_keuangan", "kelola_menu", "kelola_stok", "void"],
-  kasir:  ["transaksi", "laporan_harian", "void"],
-  pembeli:[]  // hanya layar tampilan, tidak ada akses socket aktif
+  admin: [
+    "transaksi",
+    "laporan_harian",
+    "laporan_keuangan",
+    "kelola_menu",
+    "kelola_stok",
+    "manajemen_user",
+    "setting",
+    "void",
+    "reset_omzet",
+  ],
+  owner: [
+    "transaksi",
+    "laporan_harian",
+    "laporan_keuangan",
+    "kelola_menu",
+    "kelola_stok",
+    "void",
+    "reset_omzet",
+  ],
+  kasir: ["transaksi", "laporan_harian"],
+  pembeli: [], // hanya layar tampilan, tidak ada akses socket aktif
 };
 
 // ============================================
 // 2. DATABASE SETUP (SQLite)
 // ============================================
-const db = new Database(path.join(__dirname, "warkop.db"));
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, "warkop.db");
+const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 
 db.exec(`
@@ -74,12 +102,34 @@ db.exec(`
     total_kunjungan INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS menu_opsi (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipe TEXT NOT NULL,
+    nama TEXT NOT NULL,
+    harga INTEGER DEFAULT 0,
+    icon TEXT DEFAULT '',
+    urutan INTEGER DEFAULT 0,
+    aktif INTEGER DEFAULT 1,
+    kategori_menu TEXT DEFAULT ''
+  );
 `);
 
 // Migrasi: tambah kolom stok jika belum ada
-try { db.exec("ALTER TABLE menu ADD COLUMN stok INTEGER DEFAULT 50"); } catch (e) {}
+try {
+  db.exec("ALTER TABLE menu ADD COLUMN stok INTEGER DEFAULT 50");
+} catch (e) {}
 // Migrasi: tambah kolom pelanggan_id di transaksi
-try { db.exec("ALTER TABLE transaksi ADD COLUMN pelanggan_id INTEGER DEFAULT NULL"); } catch (e) {}
+try {
+  db.exec("ALTER TABLE transaksi ADD COLUMN pelanggan_id INTEGER DEFAULT NULL");
+} catch (e) {}
+// Migrasi: tambah kolom username & password di pelanggan
+try {
+  db.exec("ALTER TABLE pelanggan ADD COLUMN username TEXT DEFAULT ''");
+} catch (e) {}
+try {
+  db.exec("ALTER TABLE pelanggan ADD COLUMN password TEXT DEFAULT ''");
+} catch (e) {}
 
 // Tabel shift karyawan
 db.exec(`
@@ -100,9 +150,11 @@ db.exec(`
 // Seed karyawan awal jika kosong
 const karyawanCount = db.prepare("SELECT COUNT(*) as c FROM karyawan").get();
 if (karyawanCount.c === 0) {
-  const seedKaryawan = db.prepare("INSERT OR IGNORE INTO karyawan (username, pin, role) VALUES (?, ?, ?)");
+  const seedKaryawan = db.prepare(
+    "INSERT OR IGNORE INTO karyawan (username, pin, role) VALUES (?, ?, ?)",
+  );
   const seedK = db.transaction(() => {
-    AKUN.forEach(a => seedKaryawan.run(a.username, a.pin, a.role));
+    AKUN.forEach((a) => seedKaryawan.run(a.username, a.pin, a.role));
   });
   seedK();
 }
@@ -110,49 +162,106 @@ if (karyawanCount.c === 0) {
 // Seed menu awal jika kosong
 const menuCount = db.prepare("SELECT COUNT(*) as c FROM menu").get();
 if (menuCount.c === 0) {
-  const seedMenu = db.prepare("INSERT INTO menu (nama, harga, kategori, stok) VALUES (?, ?, ?, ?)");
+  const seedMenu = db.prepare(
+    "INSERT INTO menu (nama, harga, kategori, stok) VALUES (?, ?, ?, ?)",
+  );
   const seeds = db.transaction(() => {
     seedMenu.run("Indomie Goreng Telur", 10000, "makanan", 50);
-    seedMenu.run("Indomie Rebus Telur",  10000, "makanan", 50);
-    seedMenu.run("Nasi Goreng Urban",    13000, "makanan", 50);
-    seedMenu.run("Kentang Goreng",       10000, "makanan", 50);
-    seedMenu.run("Snack Platter",        15000, "makanan", 50);
-    seedMenu.run("Otak-Otak",            10000, "makanan", 50);
-    seedMenu.run("Risol Mayo",           15000, "makanan", 50);
-    seedMenu.run("Dimsum Ayam",          15000, "makanan", 50);
-    seedMenu.run("Cireng Rujak",         15000, "makanan", 50);
-    seedMenu.run("Extrajoss Susu",        6000, "minuman", 50);
-    seedMenu.run("Kukubima Susu",          6000, "minuman", 50);
-    seedMenu.run("Es Teh Manis",           5000, "minuman", 50);
-    seedMenu.run("Nutrisari Jeruk",        6000, "minuman", 50);
-    seedMenu.run("Kopi Hitam Tubruk",      4000, "kopi",   50);
-    seedMenu.run("Spanish Latte",         18000, "kopi",   50);
-    seedMenu.run("Butterscoth Latte",     22000, "kopi",   50);
+    seedMenu.run("Indomie Rebus Telur", 10000, "makanan", 50);
+    seedMenu.run("Nasi Goreng Urban", 13000, "makanan", 50);
+    seedMenu.run("Kentang Goreng", 10000, "makanan", 50);
+    seedMenu.run("Snack Platter", 15000, "makanan", 50);
+    seedMenu.run("Otak-Otak", 10000, "makanan", 50);
+    seedMenu.run("Risol Mayo", 15000, "makanan", 50);
+    seedMenu.run("Dimsum Ayam", 15000, "makanan", 50);
+    seedMenu.run("Cireng Rujak", 15000, "makanan", 50);
+    seedMenu.run("Extrajoss Susu", 6000, "minuman", 50);
+    seedMenu.run("Kukubima Susu", 6000, "minuman", 50);
+    seedMenu.run("Es Teh Manis", 5000, "minuman", 50);
+    seedMenu.run("Nutrisari Jeruk", 6000, "minuman", 50);
+    seedMenu.run("Kopi Hitam Tubruk", 4000, "kopi", 50);
+    seedMenu.run("Spanish Latte", 18000, "kopi", 50);
+    seedMenu.run("Butterscoth Latte", 22000, "kopi", 50);
   });
   seeds();
 }
 
+// Seed menu_opsi awal jika kosong
+const opsiCount = db.prepare("SELECT COUNT(*) as c FROM menu_opsi").get();
+if (opsiCount.c === 0) {
+  const seedOpsi = db.prepare(
+    "INSERT INTO menu_opsi (tipe, nama, harga, icon, urutan, kategori_menu) VALUES (?, ?, ?, ?, ?, ?)",
+  );
+  const seedO = db.transaction(() => {
+    // Ukuran cup
+    seedOpsi.run("ukuran", "Small", 0, "☕", 1, "kopi,minuman");
+    seedOpsi.run("ukuran", "Medium", 3000, "☕", 2, "kopi,minuman");
+    seedOpsi.run("ukuran", "Large", 5000, "☕", 3, "kopi,minuman");
+    // Suhu
+    seedOpsi.run("suhu", "Iced", 0, "🧊", 1, "kopi,minuman");
+    seedOpsi.run("suhu", "Hot", 0, "🔥", 2, "kopi,minuman");
+    // Topping
+    seedOpsi.run("topping", "No Topping", 0, "", 1, "kopi,minuman");
+    seedOpsi.run("topping", "Sea Salt Cloud", 5000, "", 2, "kopi,minuman");
+    seedOpsi.run("topping", "Cheese Cloud", 5000, "", 3, "kopi,minuman");
+    seedOpsi.run("topping", "Whipping Cream", 5000, "", 4, "kopi,minuman");
+    seedOpsi.run("topping", "Boba", 5000, "", 5, "kopi,minuman");
+    // Add-on
+    seedOpsi.run("addon", "Sugar Syrup", 0, "", 1, "kopi,minuman");
+    seedOpsi.run("addon", "Extra Espresso Shot", 5000, "", 2, "kopi");
+    seedOpsi.run("addon", "Caramel Sauce", 5000, "", 3, "kopi,minuman");
+    seedOpsi.run("addon", "Hazelnut Syrup", 5000, "", 4, "kopi,minuman");
+    seedOpsi.run("addon", "Granola Topping", 3000, "", 5, "kopi,minuman,makanan");
+    // Level pedas (untuk makanan)
+    seedOpsi.run("level", "Tidak Pedas", 0, "", 1, "makanan");
+    seedOpsi.run("level", "Pedas Sedang", 0, "", 2, "makanan");
+    seedOpsi.run("level", "Extra Pedas", 0, "", 3, "makanan");
+  });
+  seedO();
+}
+
 // Prepared statements
 const insertTransaksi = db.prepare(
-  "INSERT INTO transaksi (tanggal, kasir, menu, qty, total, metode) VALUES (?, ?, ?, ?, ?, ?)"
+  "INSERT INTO transaksi (tanggal, kasir, menu, qty, total, metode) VALUES (?, ?, ?, ?, ?, ?)",
 );
 const getAllTransaksi = db.prepare("SELECT * FROM transaksi ORDER BY id ASC");
-const getOmzet = db.prepare("SELECT COALESCE(SUM(total), 0) as omzet FROM transaksi");
-const deleteLastTransaksi = db.prepare("DELETE FROM transaksi WHERE id = (SELECT MAX(id) FROM transaksi)");
-const getLastTransaksi = db.prepare("SELECT * FROM transaksi ORDER BY id DESC LIMIT 1");
+const getOmzet = db.prepare(
+  "SELECT COALESCE(SUM(total), 0) as omzet FROM transaksi",
+);
+const deleteLastTransaksi = db.prepare(
+  "DELETE FROM transaksi WHERE id = (SELECT MAX(id) FROM transaksi)",
+);
+const deleteAllTransaksi = db.prepare("DELETE FROM transaksi");
+const deleteTransaksiHariIni = db.prepare(
+  "DELETE FROM transaksi WHERE DATE(created_at) = DATE('now', 'localtime')",
+);
+const getLastTransaksi = db.prepare(
+  "SELECT * FROM transaksi ORDER BY id DESC LIMIT 1",
+);
 const getAllMenu = db.prepare("SELECT * FROM menu ORDER BY kategori, nama");
 const updateStok = db.prepare("UPDATE menu SET stok = ? WHERE id = ?");
-const kurangiStok = db.prepare("UPDATE menu SET stok = stok - ? WHERE id = ? AND stok >= ?");
+const kurangiStok = db.prepare(
+  "UPDATE menu SET stok = stok - ? WHERE id = ? AND stok >= ?",
+);
 const tambahStok = db.prepare("UPDATE menu SET stok = stok + ? WHERE id = ?");
 
 // Pelanggan
 const getAllPelanggan = db.prepare("SELECT * FROM pelanggan ORDER BY nama ASC");
 const getPelangganById = db.prepare("SELECT * FROM pelanggan WHERE id = ?");
-const insertPelanggan = db.prepare("INSERT INTO pelanggan (nama, telp) VALUES (?, ?)");
-const updatePelangganBelanja = db.prepare("UPDATE pelanggan SET poin = poin + ?, total_belanja = total_belanja + ?, total_kunjungan = total_kunjungan + 1 WHERE id = ?");
-const updatePelangganPoin = db.prepare("UPDATE pelanggan SET poin = ? WHERE id = ?");
+const getPelangganByTelp = db.prepare("SELECT * FROM pelanggan WHERE telp = ?");
+const insertPelanggan = db.prepare(
+  "INSERT INTO pelanggan (nama, telp) VALUES (?, ?)",
+);
+const updatePelangganBelanja = db.prepare(
+  "UPDATE pelanggan SET poin = poin + ?, total_belanja = total_belanja + ?, total_kunjungan = total_kunjungan + 1 WHERE id = ?",
+);
+const updatePelangganPoin = db.prepare(
+  "UPDATE pelanggan SET poin = ? WHERE id = ?",
+);
 const deletePelangganStmt = db.prepare("DELETE FROM pelanggan WHERE id = ?");
-const updatePelangganInfo = db.prepare("UPDATE pelanggan SET nama = ?, telp = ? WHERE id = ?");
+const updatePelangganInfo = db.prepare(
+  "UPDATE pelanggan SET nama = ?, telp = ? WHERE id = ?",
+);
 
 // Poin config: 1 poin per 10.000 belanja
 const POIN_PER_RUPIAH = 10000;
@@ -173,11 +282,18 @@ function getSemuaData() {
 
 const insertBatch = db.transaction((items) => {
   for (const item of items) {
-    insertTransaksi.run(item.Tanggal, item.Kasir, item.Menu, item.Qty, item.Total, item.Metode);
+    insertTransaksi.run(
+      item.Tanggal,
+      item.Kasir,
+      item.Menu,
+      item.Qty,
+      item.Total,
+      item.Metode,
+    );
   }
 });
 
-console.log("Database SQLite terhubung: warkop.db");
+console.log(`Database SQLite terhubung: ${dbPath}`);
 
 // ============================================
 // 3. API ENDPOINTS
@@ -189,9 +305,15 @@ app.use(express.static(__dirname));
 app.post("/api/login", (req, res) => {
   const { username, pin } = req.body;
   // Cek di database dulu
-  const akun = db.prepare("SELECT * FROM karyawan WHERE LOWER(username) = LOWER(?) AND pin = ? AND aktif = 1").get(username || "", pin);
+  const akun = db
+    .prepare(
+      "SELECT * FROM karyawan WHERE username COLLATE BINARY = ? AND pin = ? AND aktif = 1",
+    )
+    .get(username || "", pin);
   if (!akun) {
-    return res.status(401).json({ success: false, pesan: "Username atau PIN salah." });
+    return res
+      .status(401)
+      .json({ success: false, pesan: "Username atau PIN salah." });
   }
   res.json({
     success: true,
@@ -213,6 +335,20 @@ app.get("/api/menu", (req, res) => {
   res.json(getAllMenu.all());
 });
 
+// API: ambil opsi kustomisasi menu (ukuran, suhu, topping, addon)
+app.get("/api/menu-opsi", (req, res) => {
+  const rows = db
+    .prepare("SELECT * FROM menu_opsi WHERE aktif = 1 ORDER BY tipe, urutan")
+    .all();
+  // Group by tipe
+  const grouped = {};
+  rows.forEach((r) => {
+    if (!grouped[r.tipe]) grouped[r.tipe] = [];
+    grouped[r.tipe].push(r);
+  });
+  res.json(grouped);
+});
+
 // API: laporan keuangan — hanya admin & owner
 app.get("/api/laporan-keuangan", (req, res) => {
   const role = req.headers["x-role"];
@@ -231,9 +367,18 @@ app.post("/api/menu", (req, res) => {
   }
   const { nama, harga, kategori, stok } = req.body;
   if (!nama || !harga || !kategori) {
-    return res.status(400).json({ success: false, pesan: "Nama, harga, dan kategori wajib diisi." });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        pesan: "Nama, harga, dan kategori wajib diisi.",
+      });
   }
-  const result = db.prepare("INSERT INTO menu (nama, harga, kategori, stok) VALUES (?, ?, ?, ?)").run(nama, parseInt(harga), kategori, parseInt(stok) || 50);
+  const result = db
+    .prepare(
+      "INSERT INTO menu (nama, harga, kategori, stok) VALUES (?, ?, ?, ?)",
+    )
+    .run(nama, parseInt(harga), kategori, parseInt(stok) || 50);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
@@ -269,7 +414,11 @@ app.get("/api/karyawan", (req, res) => {
   if (!role || !["admin", "owner"].includes(role)) {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
-  const rows = db.prepare("SELECT id, username, role, aktif, created_at FROM karyawan ORDER BY role, username").all();
+  const rows = db
+    .prepare(
+      "SELECT id, username, role, aktif, created_at FROM karyawan ORDER BY role, username",
+    )
+    .all();
   res.json(rows);
 });
 
@@ -279,15 +428,30 @@ app.post("/api/karyawan", (req, res) => {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
   const { username, pin, karyawanRole } = req.body;
-  if (!username || !pin) return res.status(400).json({ success: false, pesan: "Username dan PIN wajib diisi." });
-  if (pin.length < 4) return res.status(400).json({ success: false, pesan: "PIN minimal 4 digit." });
+  if (!username || !pin)
+    return res
+      .status(400)
+      .json({ success: false, pesan: "Username dan PIN wajib diisi." });
+  if (pin.length < 4)
+    return res
+      .status(400)
+      .json({ success: false, pesan: "PIN minimal 4 digit." });
   // Cek duplikat
-  const exists = db.prepare("SELECT id FROM karyawan WHERE LOWER(username) = LOWER(?)").get(username.trim());
-  if (exists) return res.status(400).json({ success: false, pesan: "Username sudah dipakai." });
+  const exists = db
+    .prepare("SELECT id FROM karyawan WHERE LOWER(username) = LOWER(?)")
+    .get(username.trim());
+  if (exists)
+    return res
+      .status(400)
+      .json({ success: false, pesan: "Username sudah dipakai." });
   // Owner hanya bisa tambah kasir, admin bisa tambah semua
   const allowedRoles = role === "admin" ? ["kasir", "owner"] : ["kasir"];
-  const finalRole = allowedRoles.includes(karyawanRole) ? karyawanRole : "kasir";
-  const result = db.prepare("INSERT INTO karyawan (username, pin, role) VALUES (?, ?, ?)").run(username.trim(), pin, finalRole);
+  const finalRole = allowedRoles.includes(karyawanRole)
+    ? karyawanRole
+    : "kasir";
+  const result = db
+    .prepare("INSERT INTO karyawan (username, pin, role) VALUES (?, ?, ?)")
+    .run(username.trim(), pin, finalRole);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
@@ -297,35 +461,103 @@ app.put("/api/karyawan/:id", (req, res) => {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
   const { username, pin, karyawanRole, aktif } = req.body;
-  const target = db.prepare("SELECT * FROM karyawan WHERE id = ?").get(req.params.id);
-  if (!target) return res.status(404).json({ success: false, pesan: "Karyawan tidak ditemukan." });
+  const target = db
+    .prepare("SELECT * FROM karyawan WHERE id = ?")
+    .get(req.params.id);
+  if (!target)
+    return res
+      .status(404)
+      .json({ success: false, pesan: "Karyawan tidak ditemukan." });
   // Jangan bisa edit akun admin utama
   if (target.username === "admin" && role !== "admin") {
-    return res.status(403).json({ success: false, pesan: "Tidak bisa edit akun admin." });
+    return res
+      .status(403)
+      .json({ success: false, pesan: "Tidak bisa edit akun admin." });
   }
   if (username && username.trim()) {
-    const dup = db.prepare("SELECT id FROM karyawan WHERE LOWER(username) = LOWER(?) AND id != ?").get(username.trim(), req.params.id);
-    if (dup) return res.status(400).json({ success: false, pesan: "Username sudah dipakai." });
-    db.prepare("UPDATE karyawan SET username = ? WHERE id = ?").run(username.trim(), req.params.id);
+    const dup = db
+      .prepare(
+        "SELECT id FROM karyawan WHERE LOWER(username) = LOWER(?) AND id != ?",
+      )
+      .get(username.trim(), req.params.id);
+    if (dup)
+      return res
+        .status(400)
+        .json({ success: false, pesan: "Username sudah dipakai." });
+    db.prepare("UPDATE karyawan SET username = ? WHERE id = ?").run(
+      username.trim(),
+      req.params.id,
+    );
   }
-  if (pin && pin.length >= 4) db.prepare("UPDATE karyawan SET pin = ? WHERE id = ?").run(pin, req.params.id);
+  if (pin && pin.length >= 4)
+    db.prepare("UPDATE karyawan SET pin = ? WHERE id = ?").run(
+      pin,
+      req.params.id,
+    );
   if (karyawanRole && ["kasir", "owner"].includes(karyawanRole)) {
-    db.prepare("UPDATE karyawan SET role = ? WHERE id = ?").run(karyawanRole, req.params.id);
+    db.prepare("UPDATE karyawan SET role = ? WHERE id = ?").run(
+      karyawanRole,
+      req.params.id,
+    );
   }
-  if (aktif !== undefined) db.prepare("UPDATE karyawan SET aktif = ? WHERE id = ?").run(aktif ? 1 : 0, req.params.id);
+  if (aktif !== undefined)
+    db.prepare("UPDATE karyawan SET aktif = ? WHERE id = ?").run(
+      aktif ? 1 : 0,
+      req.params.id,
+    );
   res.json({ success: true });
 });
 
 app.delete("/api/karyawan/:id", (req, res) => {
   const role = req.headers["x-role"];
   if (!role || !["admin"].includes(role)) {
-    return res.status(403).json({ success: false, pesan: "Hanya admin yang bisa hapus karyawan." });
+    return res
+      .status(403)
+      .json({ success: false, pesan: "Hanya admin yang bisa hapus karyawan." });
   }
-  const target = db.prepare("SELECT * FROM karyawan WHERE id = ?").get(req.params.id);
-  if (!target) return res.status(404).json({ success: false, pesan: "Karyawan tidak ditemukan." });
-  if (target.username === "admin") return res.status(403).json({ success: false, pesan: "Tidak bisa hapus akun admin." });
+  const target = db
+    .prepare("SELECT * FROM karyawan WHERE id = ?")
+    .get(req.params.id);
+  if (!target)
+    return res
+      .status(404)
+      .json({ success: false, pesan: "Karyawan tidak ditemukan." });
+  if (target.username === "admin")
+    return res
+      .status(403)
+      .json({ success: false, pesan: "Tidak bisa hapus akun admin." });
   db.prepare("DELETE FROM karyawan WHERE id = ?").run(req.params.id);
   res.json({ success: true });
+});
+
+// ============================================
+// PELANGGAN AUTH (Register & Login untuk app)
+// ============================================
+app.post("/api/pelanggan/register", (req, res) => {
+  const { username, password, nama, telp } = req.body;
+  if (!username || !username.trim()) return res.status(400).json({ success: false, pesan: "Username wajib diisi." });
+  if (!password || password.length < 4) return res.status(400).json({ success: false, pesan: "Password minimal 4 karakter." });
+  if (!nama || !nama.trim()) return res.status(400).json({ success: false, pesan: "Nama wajib diisi." });
+
+  const existing = db.prepare("SELECT id FROM pelanggan WHERE username = ?").get(username.trim().toLowerCase());
+  if (existing) return res.status(400).json({ success: false, pesan: "Username sudah dipakai." });
+
+  const result = db.prepare("INSERT INTO pelanggan (nama, telp, username, password) VALUES (?, ?, ?, ?)").run(
+    nama.trim(), (telp || "").trim(), username.trim().toLowerCase(), password
+  );
+  const plg = db.prepare("SELECT id, nama, telp, username, poin, total_belanja, total_kunjungan FROM pelanggan WHERE id = ?").get(result.lastInsertRowid);
+  res.json({ success: true, pelanggan: plg });
+});
+
+app.post("/api/pelanggan/login", (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ success: false, pesan: "Username dan password wajib diisi." });
+
+  const plg = db.prepare("SELECT id, nama, telp, username, password, poin, total_belanja, total_kunjungan FROM pelanggan WHERE username = ?").get(username.trim().toLowerCase());
+  if (!plg || plg.password !== password) return res.status(401).json({ success: false, pesan: "Username atau password salah." });
+
+  const { password: _, ...data } = plg;
+  res.json({ success: true, pelanggan: data });
 });
 
 // ============================================
@@ -335,13 +567,20 @@ app.get("/api/pelanggan", (req, res) => {
   res.json(getAllPelanggan.all());
 });
 
+app.get("/api/pelanggan/cari-telp/:telp", (req, res) => {
+  const plg = getPelangganByTelp.get(req.params.telp);
+  if (plg) res.json({ found: true, pelanggan: plg });
+  else res.json({ found: false });
+});
+
 app.post("/api/pelanggan", (req, res) => {
   const role = req.headers["x-role"];
   if (!role || !["admin", "owner", "kasir"].includes(role)) {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
   const { nama, telp } = req.body;
-  if (!nama || !nama.trim()) return res.status(400).json({ success: false, pesan: "Nama wajib diisi." });
+  if (!nama || !nama.trim())
+    return res.status(400).json({ success: false, pesan: "Nama wajib diisi." });
   const result = insertPelanggan.run(nama.trim(), (telp || "").trim());
   res.json({ success: true, id: result.lastInsertRowid });
 });
@@ -352,7 +591,8 @@ app.put("/api/pelanggan/:id", (req, res) => {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
   const { nama, telp } = req.body;
-  if (!nama || !nama.trim()) return res.status(400).json({ success: false, pesan: "Nama wajib diisi." });
+  if (!nama || !nama.trim())
+    return res.status(400).json({ success: false, pesan: "Nama wajib diisi." });
   updatePelangganInfo.run(nama.trim(), (telp || "").trim(), req.params.id);
   res.json({ success: true });
 });
@@ -374,12 +614,17 @@ app.post("/api/pelanggan/:id/tukar-poin", (req, res) => {
   }
   const { poin } = req.body;
   const plg = getPelangganById.get(req.params.id);
-  if (!plg) return res.status(404).json({ success: false, pesan: "Pelanggan tidak ditemukan." });
+  if (!plg)
+    return res
+      .status(404)
+      .json({ success: false, pesan: "Pelanggan tidak ditemukan." });
   if (!poin || poin <= 0 || poin > plg.poin) {
-    return res.status(400).json({ success: false, pesan: "Poin tidak valid atau tidak cukup." });
+    return res
+      .status(400)
+      .json({ success: false, pesan: "Poin tidak valid atau tidak cukup." });
   }
   updatePelangganPoin.run(plg.poin - poin, req.params.id);
-  const diskon = poin * 1000; // 1 poin = Rp 1.000 diskon
+  const diskon = poin * 300; // 1 poin = Rp 300 diskon
   res.json({ success: true, diskon, sisaPoin: plg.poin - poin });
 });
 
@@ -387,16 +632,14 @@ app.post("/api/pelanggan/:id/tukar-poin", (req, res) => {
 // SHIFT API
 // ============================================
 const SHIFT_CONFIG = [
-  { nama: "Pagi",   mulai: "06:00", selesai: "14:00", icon: "🌅" },
-  { nama: "Siang",  mulai: "14:00", selesai: "22:00", icon: "☀️" },
-  { nama: "Malam",  mulai: "22:00", selesai: "06:00", icon: "🌙" },
+  { nama: "Pagi", mulai: "06:00", selesai: "15:00", icon: "🌅" },
+  { nama: "Sore", mulai: "15:00", selesai: "23:59", icon: "🌙" },
 ];
 
 function getShiftOtomatis() {
   const jam = new Date().getHours();
-  if (jam >= 6 && jam < 14) return "Pagi";
-  if (jam >= 14 && jam < 22) return "Siang";
-  return "Malam";
+  if (jam >= 6 && jam < 15) return "Pagi";
+  return "Sore";
 }
 
 // Clock In
@@ -406,24 +649,54 @@ app.post("/api/shift/clock-in", (req, res) => {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
   const { username, shift } = req.body;
-  if (!username) return res.status(400).json({ success: false, pesan: "Username wajib." });
+  if (!username)
+    return res.status(400).json({ success: false, pesan: "Username wajib." });
 
   // Cek apakah sudah clock in dan belum clock out
-  const existing = db.prepare("SELECT * FROM shift_log WHERE username = ? AND status = 'aktif'").get(username);
+  const existing = db
+    .prepare("SELECT * FROM shift_log WHERE username = ? AND status = 'aktif'")
+    .get(username);
   if (existing) {
-    return res.json({ success: true, pesan: "Sudah clock in.", shift: existing });
+    // Jika shift aktif dari hari lain, auto-close dan buat baru
+    const today = new Date().toISOString().split("T")[0];
+    const shiftDate = existing.clock_in.split("T")[0];
+    if (shiftDate === today) {
+      return res.json({
+        success: true,
+        pesan: "Sudah clock in.",
+        shift: existing,
+      });
+    }
+    // Close shift lama
+    const trxOld = db
+      .prepare(
+        "SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as omzet FROM transaksi WHERE kasir = ? AND created_at >= ?",
+      )
+      .get(username, existing.clock_in);
+    db.prepare(
+      "UPDATE shift_log SET clock_out = ?, total_transaksi = ?, total_omzet = ?, status = 'selesai' WHERE id = ?",
+    ).run(new Date().toISOString(), trxOld.trx, trxOld.omzet, existing.id);
   }
 
-  const karyawan = db.prepare("SELECT id FROM karyawan WHERE LOWER(username) = LOWER(?)").get(username);
-  if (!karyawan) return res.status(404).json({ success: false, pesan: "Karyawan tidak ditemukan." });
+  const karyawan = db
+    .prepare("SELECT id FROM karyawan WHERE LOWER(username) = LOWER(?)")
+    .get(username);
+  if (!karyawan)
+    return res
+      .status(404)
+      .json({ success: false, pesan: "Karyawan tidak ditemukan." });
 
   const shiftNama = shift || getShiftOtomatis();
   const now = new Date().toISOString();
-  const result = db.prepare(
-    "INSERT INTO shift_log (karyawan_id, username, shift, clock_in, status) VALUES (?, ?, ?, ?, 'aktif')"
-  ).run(karyawan.id, username, shiftNama, now);
+  const result = db
+    .prepare(
+      "INSERT INTO shift_log (karyawan_id, username, shift, clock_in, status) VALUES (?, ?, ?, ?, 'aktif')",
+    )
+    .run(karyawan.id, username, shiftNama, now);
 
-  const newShift = db.prepare("SELECT * FROM shift_log WHERE id = ?").get(result.lastInsertRowid);
+  const newShift = db
+    .prepare("SELECT * FROM shift_log WHERE id = ?")
+    .get(result.lastInsertRowid);
   res.json({ success: true, shift: newShift });
 });
 
@@ -434,32 +707,47 @@ app.post("/api/shift/clock-out", (req, res) => {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
   const { username } = req.body;
-  const existing = db.prepare("SELECT * FROM shift_log WHERE username = ? AND status = 'aktif'").get(username);
-  if (!existing) return res.status(400).json({ success: false, pesan: "Belum clock in." });
+  const existing = db
+    .prepare("SELECT * FROM shift_log WHERE username = ? AND status = 'aktif'")
+    .get(username);
+  if (!existing)
+    return res.status(400).json({ success: false, pesan: "Belum clock in." });
 
   // Hitung transaksi & omzet selama shift
-  const trxData = db.prepare(
-    "SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as omzet FROM transaksi WHERE kasir = ? AND created_at >= ?"
-  ).get(username, existing.clock_in);
+  const trxData = db
+    .prepare(
+      "SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as omzet FROM transaksi WHERE kasir = ? AND created_at >= ?",
+    )
+    .get(username, existing.clock_in);
 
   const now = new Date().toISOString();
   db.prepare(
-    "UPDATE shift_log SET clock_out = ?, total_transaksi = ?, total_omzet = ?, status = 'selesai' WHERE id = ?"
+    "UPDATE shift_log SET clock_out = ?, total_transaksi = ?, total_omzet = ?, status = 'selesai' WHERE id = ?",
   ).run(now, trxData.trx, trxData.omzet, existing.id);
 
-  const updated = db.prepare("SELECT * FROM shift_log WHERE id = ?").get(existing.id);
+  const updated = db
+    .prepare("SELECT * FROM shift_log WHERE id = ?")
+    .get(existing.id);
   res.json({ success: true, shift: updated });
 });
 
 // Get shift aktif
 app.get("/api/shift/aktif", (req, res) => {
-  const rows = db.prepare("SELECT * FROM shift_log WHERE status = 'aktif' ORDER BY clock_in DESC").all();
+  const rows = db
+    .prepare(
+      "SELECT * FROM shift_log WHERE status = 'aktif' ORDER BY clock_in DESC",
+    )
+    .all();
   res.json(rows);
 });
 
 // Get shift aktif per user
 app.get("/api/shift/aktif/:username", (req, res) => {
-  const row = db.prepare("SELECT * FROM shift_log WHERE LOWER(username) = LOWER(?) AND status = 'aktif'").get(req.params.username);
+  const row = db
+    .prepare(
+      "SELECT * FROM shift_log WHERE LOWER(username) = LOWER(?) AND status = 'aktif'",
+    )
+    .get(req.params.username);
   res.json({ shift: row || null });
 });
 
@@ -471,15 +759,68 @@ app.get("/api/shift/riwayat", (req, res) => {
   }
   const today = new Date().toISOString().split("T")[0];
   const tanggal = req.query.tanggal || today;
-  const rows = db.prepare(
-    "SELECT * FROM shift_log WHERE date(clock_in) = ? ORDER BY clock_in DESC"
-  ).all(tanggal);
+  const rows = db
+    .prepare(
+      "SELECT * FROM shift_log WHERE date(clock_in, 'localtime') = ? ORDER BY clock_in DESC",
+    )
+    .all(tanggal);
   res.json(rows);
 });
 
 // Get config shift
 app.get("/api/shift/config", (req, res) => {
   res.json({ shifts: SHIFT_CONFIG, shiftSekarang: getShiftOtomatis() });
+});
+
+// Report shift detail per user
+app.get("/api/shift/report/:username", (req, res) => {
+  const username = req.params.username;
+  const today = new Date().toISOString().split("T")[0];
+  const tanggal = req.query.tanggal || today;
+
+  // Riwayat shift hari ini/tanggal tertentu
+  const shifts = db
+    .prepare(
+      "SELECT * FROM shift_log WHERE username = ? AND date(clock_in, 'localtime') = ? ORDER BY clock_in DESC",
+    )
+    .all(username, tanggal);
+
+  // Detail per shift: breakdown tunai vs qris
+  const report = shifts.map((s) => {
+    const whereClause = s.clock_out
+      ? "kasir = ? AND created_at >= ? AND created_at <= ?"
+      : "kasir = ? AND created_at >= ?";
+    const params = s.clock_out
+      ? [username, s.clock_in, s.clock_out]
+      : [username, s.clock_in];
+
+    const tunai = db
+      .prepare(
+        `SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as total FROM transaksi WHERE ${whereClause} AND metode = 'Tunai'`,
+      )
+      .get(...params);
+    const qris = db
+      .prepare(
+        `SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as total FROM transaksi WHERE ${whereClause} AND metode = 'QRIS'`,
+      )
+      .get(...params);
+    const totalTrx = db
+      .prepare(
+        `SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as total FROM transaksi WHERE ${whereClause}`,
+      )
+      .get(...params);
+
+    return {
+      ...s,
+      detail: {
+        tunai: { trx: tunai.trx, total: tunai.total },
+        qris: { trx: qris.trx, total: qris.total },
+        total: { trx: totalTrx.trx, total: totalTrx.total },
+      },
+    };
+  });
+
+  res.json({ tanggal, username, shifts: report });
 });
 
 // API: cek hak akses role
@@ -489,19 +830,51 @@ app.get("/api/hak-akses/:role", (req, res) => {
   res.json({ hakAkses: hak });
 });
 
+// VAPID public key untuk client
+app.get("/api/vapid-public-key", (req, res) => {
+  res.json({ publicKey: VAPID_PUBLIC });
+});
+
+// Push subscription dari pembeli
+app.post("/api/push-subscribe", (req, res) => {
+  const { meja, subscription } = req.body;
+  if (!meja || !subscription) return res.status(400).json({ success: false });
+  if (!pushSubscriptions[meja]) pushSubscriptions[meja] = [];
+  // Hindari duplikat
+  const exists = pushSubscriptions[meja].find(s => s.endpoint === subscription.endpoint);
+  if (!exists) pushSubscriptions[meja].push(subscription);
+  console.log(`  Push subscription terdaftar untuk meja ${meja}`);
+  res.json({ success: true });
+});
+
 // Halaman utama kasir/owner/admin
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
 // Halaman layar pembeli
-app.get("/pembeli", (req, res) => res.sendFile(path.join(__dirname, "pembeli.html")));
-app.get("/pembeli.html", (req, res) => res.sendFile(path.join(__dirname, "pembeli.html")));
+app.get("/pembeli", (req, res) =>
+  res.sendFile(path.join(__dirname, "pembeli.html")),
+);
+app.get("/pembeli.html", (req, res) =>
+  res.sendFile(path.join(__dirname, "pembeli.html")),
+);
 
 // Halaman pesan (self-order pelanggan)
-app.get("/pesan", (req, res) => res.sendFile(path.join(__dirname, "pesan.html")));
-app.get("/pesan.html", (req, res) => res.sendFile(path.join(__dirname, "pesan.html")));
+app.get("/pesan", (req, res) =>
+  res.sendFile(path.join(__dirname, "pesan.html")),
+);
+app.get("/pesan.html", (req, res) =>
+  res.sendFile(path.join(__dirname, "pesan.html")),
+);
+
+// Halaman app (pesan online dari rumah)
+app.get("/app", (req, res) =>
+  res.sendFile(path.join(__dirname, "app.html")),
+);
 
 // Halaman cetak QR code meja
-app.get("/qr-meja", (req, res) => res.sendFile(path.join(__dirname, "qr-meja.html")));
+app.get("/qr-meja", (req, res) =>
+  res.sendFile(path.join(__dirname, "qr-meja.html")),
+);
 
 // ============================================
 // 4. SOCKET.IO — REAL-TIME DENGAN VALIDASI ROLE
@@ -535,7 +908,11 @@ io.on("connection", (socket) => {
   // Update total + detail pesanan ke layar pembeli
   socket.on("update-total", (data) => {
     if (!["admin", "owner", "kasir"].includes(userRole)) return;
-    io.emit("update-total", { total: data.total, method: data.method, items: data.items || [] });
+    io.emit("update-total", {
+      total: data.total,
+      method: data.method,
+      items: data.items || [],
+    });
   });
 
   // Sync manual
@@ -552,10 +929,14 @@ io.on("connection", (socket) => {
   // Transaksi baru — kasir, owner, admin
   socket.on("new-transaction", (data) => {
     if (!["admin", "owner", "kasir"].includes(userRole)) {
-      socket.emit("error", { pesan: "Akses ditolak: tidak bisa melakukan transaksi." });
+      socket.emit("error", {
+        pesan: "Akses ditolak: tidak bisa melakukan transaksi.",
+      });
       return;
     }
-    console.log(`[${userName}/${userRole}] Transaksi: ${data.items.length} item(s)`);
+    console.log(
+      `[${userName}/${userRole}] Transaksi: ${data.items.length} item(s)`,
+    );
     insertBatch(data.items);
     // Kurangi stok di database
     if (data.stockUpdates) {
@@ -581,21 +962,28 @@ io.on("connection", (socket) => {
   // Void transaksi — semua role yang punya hak void
   socket.on("void-transaction", () => {
     if (!HAK_AKSES[userRole]?.includes("void")) {
-      socket.emit("error", { pesan: "Akses ditolak: tidak bisa void transaksi." });
+      socket.emit("error", {
+        pesan: "Akses ditolak: tidak bisa void transaksi.",
+      });
       return;
     }
     const lastItem = getLastTransaksi.get();
     if (lastItem) {
       // Kembalikan stok
-      const menuItem = db.prepare("SELECT id FROM menu WHERE nama = ?").get(lastItem.menu);
+      const menuItem = db
+        .prepare("SELECT id FROM menu WHERE nama = ?")
+        .get(lastItem.menu);
       if (menuItem) tambahStok.run(lastItem.qty, menuItem.id);
       deleteLastTransaksi.run();
       const allData = getSemuaData();
       io.emit("transaction-update", {
         voided: {
-          Tanggal: lastItem.tanggal, Kasir: lastItem.kasir,
-          Menu: lastItem.menu, Qty: lastItem.qty,
-          Total: lastItem.total, Metode: lastItem.metode,
+          Tanggal: lastItem.tanggal,
+          Kasir: lastItem.kasir,
+          Menu: lastItem.menu,
+          Qty: lastItem.qty,
+          Total: lastItem.total,
+          Metode: lastItem.metode,
         },
         history: allData.history,
         omzet: allData.omzet,
@@ -605,19 +993,133 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Reset omzet — hanya admin & owner
+  socket.on("reset-omzet", (data) => {
+    if (!HAK_AKSES[userRole]?.includes("reset_omzet")) {
+      socket.emit("error", { pesan: "Akses ditolak: tidak bisa reset omzet." });
+      return;
+    }
+    const mode = data?.mode || "semua";
+    if (mode === "semua") {
+      deleteAllTransaksi.run();
+      console.log(`[${userName}] RESET OMZET: semua transaksi dihapus`);
+    } else if (mode === "hari_ini") {
+      deleteTransaksiHariIni.run();
+      console.log(`[${userName}] RESET OMZET: transaksi hari ini dihapus`);
+    }
+    const allData = getSemuaData();
+    io.emit("transaction-update", {
+      resetOmzet: mode,
+      history: allData.history,
+      omzet: allData.omzet,
+      menu: getAllMenu.all(),
+    });
+  });
+
   // Pesanan dari pelanggan (self-order via QR)
   socket.on("customer-order", (data) => {
     if (!data || !data.meja || !data.items || data.items.length === 0) {
       socket.emit("error", { pesan: "Data pesanan tidak valid." });
       return;
     }
-    console.log(`[Meja ${data.meja}] Pesanan masuk: ${data.items.length} item, total Rp ${data.total}`);
-    // Broadcast ke semua kasir/admin/owner
+    console.log(
+      `[Meja ${data.meja}] Pesanan masuk: ${data.items.length} item, total Rp ${data.total}`,
+    );
+    // Simpan transaksi ke database
+    const tanggal = new Date().toLocaleDateString("id-ID");
+    const metode = data.metode || "Tunai";
+    const kasirLabel = `Meja ${data.meja}`;
+    const trxItems = [];
+    for (const item of data.items) {
+      insertTransaksi.run(tanggal, kasirLabel, item.nama, item.qty, item.harga * item.qty, metode);
+      // Kurangi stok
+      if (item.menuId) kurangiStok.run(item.qty, item.menuId, item.qty);
+      trxItems.push({ Tanggal: tanggal, Kasir: kasirLabel, Menu: item.nama, Qty: item.qty, Total: item.harga * item.qty, Metode: metode });
+    }
+    // Broadcast ke semua kasir/admin/owner + update data
+    const allData = getSemuaData();
     io.emit("customer-order", {
       meja: data.meja,
       items: data.items,
       total: data.total,
+      metode,
+      tipe: data.tipe || "Dine In",
       waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+    });
+    io.emit("transaction-update", {
+      newItems: trxItems,
+      totalAmount: data.total,
+      history: allData.history,
+      omzet: allData.omzet,
+      menu: getAllMenu.all(),
+    });
+  });
+
+  // Pesanan online dari app (pesan dari rumah)
+  socket.on("online-order", (data) => {
+    if (!data || !data.items || data.items.length === 0) {
+      socket.emit("error", { pesan: "Data pesanan tidak valid." });
+      return;
+    }
+    console.log(
+      `[ONLINE] ${data.nama} - ${data.items.length} item, total Rp ${data.total}`,
+    );
+    // Simpan transaksi ke database
+    const tanggal = new Date().toLocaleDateString("id-ID");
+    const metode = data.metode || "Tunai";
+    const kasirLabel = `Online (${data.nama || "Tanpa Nama"})`;
+    const trxItems = [];
+    for (const item of data.items) {
+      insertTransaksi.run(tanggal, kasirLabel, item.nama, item.qty, item.harga * item.qty, metode);
+      // Kurangi stok
+      if (item.menuId) kurangiStok.run(item.qty, item.menuId, item.qty);
+      trxItems.push({ Tanggal: tanggal, Kasir: kasirLabel, Menu: item.nama, Qty: item.qty, Total: item.harga * item.qty, Metode: metode });
+    }
+    // Update poin pelanggan jika login
+    if (data.pelangganId && data.total > 0) {
+      const poinDapat = Math.floor(data.total / POIN_PER_RUPIAH);
+      updatePelangganBelanja.run(poinDapat, data.total, data.pelangganId);
+    }
+    const allData = getSemuaData();
+    io.emit("online-order", {
+      nama: data.nama || "Tanpa Nama",
+      alamat: data.alamat || "-",
+      telp: data.telp || "-",
+      items: data.items,
+      total: data.total,
+      metode,
+      tipe: data.tipe || "Dine In",
+      catatan: data.catatan || "",
+      waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+    });
+    io.emit("transaction-update", {
+      newItems: trxItems,
+      totalAmount: data.total,
+      history: allData.history,
+      omzet: allData.omzet,
+      menu: getAllMenu.all(),
+    });
+  });
+
+  // Kasir memberitahu pesanan meja sudah selesai
+  socket.on("order-ready", (data) => {
+    if (!data || !data.meja) return;
+    console.log(`[${userName}] Pesanan meja ${data.meja} SELESAI`);
+    io.emit("order-ready", { meja: data.meja });
+
+    // Kirim Web Push Notification ke semua subscriber meja ini
+    const subs = pushSubscriptions[data.meja] || [];
+    const payload = JSON.stringify({
+      title: "Pesanan Siap! — Warkop Urban",
+      body: `Pesanan Meja ${data.meja} sudah selesai. Silakan ambil di kasir!`,
+      tag: "order-ready-" + data.meja,
+      url: "/pesan?meja=" + data.meja,
+    });
+    subs.forEach((sub, i) => {
+      webPush.sendNotification(sub, payload).catch(() => {
+        // Hapus subscription yang sudah expired
+        subs.splice(i, 1);
+      });
     });
   });
 
@@ -642,7 +1144,12 @@ function getLocalIP() {
       if (net.family === "IPv4" && !net.internal) {
         if (wifiKeywords.some((k) => lower.includes(k))) {
           wifiIP = net.address;
-        } else if (!lanIP && lower.includes("ethernet") && !lower.includes("virtualbox") && !lower.includes("vbox")) {
+        } else if (
+          !lanIP &&
+          lower.includes("ethernet") &&
+          !lower.includes("virtualbox") &&
+          !lower.includes("vbox")
+        ) {
           lanIP = net.address;
         }
       }
@@ -657,7 +1164,12 @@ http.listen(PORT, "0.0.0.0", () => {
 
   // Broadcast mDNS supaya bisa diakses via http://warkop.local:5000
   const bonjour = new Bonjour();
-  bonjour.publish({ name: "Warkop Urban POS", type: "http", port: PORT, host: "warkop.local" });
+  bonjour.publish({
+    name: "Warkop Urban POS",
+    type: "http",
+    port: PORT,
+    host: "warkop.local",
+  });
 
   console.log("========================================");
   console.log("      SERVER WARKOP URBAN AKTIF!        ");
@@ -685,18 +1197,25 @@ http.listen(PORT, "0.0.0.0", () => {
   console.log("  SCAN QR DARI HP UNTUK LAYAR PEMBELI:");
   qrTerminal.generate(pembeliURL, { small: true }, (qr) => console.log(qr));
 
-  // ===== PUBLIC TUNNEL via Cloudflare (akses dari internet) =====
-  (function() {
-    try {
+  // ===== PUBLIC TUNNEL via Cloudflare (auto-reconnect) =====
+  (function () {
+    let cfPath;
+    try { cfPath = require("cloudflared").bin; } catch (e) {
+      console.log("  Cloudflared tidak tersedia: " + e.message);
+      return;
+    }
+    let cfChild = null;
+
+    function startTunnel() {
       console.log("\n  Membuka tunnel Cloudflare...");
-      // Cari cloudflared binary dari untun/node_modules
-      const cfPath = path.join(__dirname, "node_modules", "untun", "bin", "cloudflared" + (process.platform === "win32" ? ".exe" : ""));
-      const child = require("child_process").spawn(cfPath, ["tunnel", "--url", `http://localhost:${PORT}`], {
-        stdio: ["ignore", "pipe", "pipe"],
-        windowsHide: true,
-        detached: false,
-      });
+      publicURL = null;
       let found = false;
+
+      cfChild = require("child_process").spawn(
+        cfPath, ["tunnel", "--url", `http://localhost:${PORT}`],
+        { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, detached: false }
+      );
+
       function parseLine(line) {
         if (found) return;
         const match = line.match(/https:\/\/[a-z0-9\-]+\.trycloudflare\.com/);
@@ -711,27 +1230,23 @@ http.listen(PORT, "0.0.0.0", () => {
           console.log(`  QR MEJA   : ${publicURL}/qr-meja`);
           console.log("========================================\n");
           qrTerminal.generate(`${publicURL}/pesan?meja=1`, { small: true }, (qr) => console.log(qr));
-          // Beritahu semua client
           io.emit("tunnel-ready", { publicURL });
         }
       }
-      child.stdout.on("data", (d) => d.toString().split("\n").forEach(parseLine));
-      child.stderr.on("data", (d) => d.toString().split("\n").forEach(parseLine));
-      child.on("error", (e) => {
-        console.log("  Cloudflared tidak ditemukan: " + e.message);
-        console.log("  QR meja hanya bisa diakses via WiFi lokal.");
+
+      cfChild.stdout.on("data", (d) => d.toString().split("\n").forEach(parseLine));
+      cfChild.stderr.on("data", (d) => d.toString().split("\n").forEach(parseLine));
+      cfChild.on("error", (e) => console.log("  Tunnel error: " + e.message));
+      cfChild.on("exit", (code) => {
+        console.log(`  Tunnel berhenti (code ${code}). Reconnect dalam 3 detik...`);
+        publicURL = null;
+        io.emit("tunnel-ready", { publicURL: null });
+        setTimeout(startTunnel, 3000);
       });
-      child.on("exit", (code) => {
-        if (!found) {
-          console.log("  Tunnel cloudflared berhenti (code " + code + ").");
-          publicURL = null;
-        }
-      });
-      process.on("exit", () => { try { child.kill(); } catch(e) {} });
-    } catch (e) {
-      console.log("  Tunnel gagal: " + e.message);
-      publicURL = null;
     }
+
+    startTunnel();
+    process.on("exit", () => { try { if (cfChild) cfChild.kill(); } catch(e){} });
   })();
 
   // ===== AUTO DETECT NETWORK CHANGE =====
@@ -751,7 +1266,7 @@ http.listen(PORT, "0.0.0.0", () => {
         ip: newIP,
         port: PORT,
         kasir: `http://${newIP}:${PORT}`,
-        pembeli: `http://${newIP}:${PORT}/pembeli`
+        pembeli: `http://${newIP}:${PORT}/pembeli`,
       });
     }
   }, 5000); // Cek setiap 5 detik

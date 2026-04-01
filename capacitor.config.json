@@ -1,0 +1,12 @@
+{
+  "appId": "com.warkopurban.app",
+  "appName": "Warkop Urban",
+  "webDir": "www",
+  "server": {
+    "url": "https://warkop-urban.example.com/app",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

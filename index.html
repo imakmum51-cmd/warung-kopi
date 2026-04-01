@@ -24,6 +24,13 @@
       };
     </script>
     <style>
+      /* Sembunyikan icon mata bawaan browser */
+      input[type="password"]::-ms-reveal,
+      input[type="password"]::-ms-clear,
+      input[type="password"]::-webkit-credentials-auto-fill-button,
+      input[type="password"]::-webkit-textfield-decoration-container {
+        display: none !important;
+      }
       * {
         font-family: "Plus Jakarta Sans", sans-serif;
       }
@@ -883,14 +890,14 @@
         animation: orderPulseGlow 2s infinite;
       }
       #customer-orders-panel {
-        position: fixed; top: 70px; right: 16px; z-index: 90;
-        width: 360px; max-height: calc(100vh - 100px);
-        display: flex; flex-direction: column; gap: 12px;
-        pointer-events: none;
+        position: fixed; bottom: 16px; left: 16px; z-index: 90;
+        width: 340px; max-height: 50vh;
+        display: flex; flex-direction: column-reverse; gap: 10px;
+        pointer-events: none; overflow-y: auto;
       }
       #customer-orders-panel > div { pointer-events: all; }
       @media (max-width: 768px) {
-        #customer-orders-panel { right: 8px; left: 8px; width: auto; top: auto; bottom: 90px; max-height: 60vh; }
+        #customer-orders-panel { right: 8px; left: 8px; width: auto; bottom: 90px; max-height: 40vh; }
       }
 
       /* ===== MOBILE CART OVERLAY ===== */
@@ -995,6 +1002,22 @@
       <span id="toast-msg" class="text-xs font-bold uppercase tracking-widest"
         >BERHASIL</span
       >
+    </div>
+
+    <!-- ==================== LOGIN ERROR POPUP ==================== -->
+    <div id="login-error-popup" class="fixed inset-0 z-[200] flex items-center justify-center p-6 opacity-0 pointer-events-none" style="transition:opacity 0.3s ease; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);">
+      <div class="relative bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center" style="transform:scale(0.9); transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);" id="login-error-box">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+          <svg class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </div>
+        <h3 class="text-lg font-800 text-slate-800 mb-2">Login Gagal</h3>
+        <p class="text-sm text-slate-500 mb-6" id="login-error-msg">Username atau PIN salah!</p>
+        <button onclick="closeLoginError()" class="w-full py-3 rounded-2xl text-white font-700 text-sm" style="background:linear-gradient(135deg,#ea580c,#dc2626); box-shadow:0 4px 15px rgba(234,88,12,0.3);">
+          Coba Lagi
+        </button>
+      </div>
     </div>
 
     <!-- ==================== LOGIN SCREEN ==================== -->
@@ -1143,12 +1166,8 @@
               id="togglePinBtn"
               class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all active:scale-90"
             >
-              <svg id="eyeOff" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-              </svg>
-              <svg id="eyeOn" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
             </button>
           </div>
@@ -1432,6 +1451,16 @@
               <div id="dark-toggle" class="dark-toggle" onclick="toggleDarkMode()"></div>
             </div>
             <button
+              id="btn-shift-report"
+              onclick="openShiftReportModal()"
+              class="bg-indigo-500 hover:bg-indigo-600 text-white p-2.5 rounded-xl transition-all shadow-lg active:scale-95"
+              title="Report Shift"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </button>
+            <button
               id="btn-toggle-view"
               onclick="toggleDashboardPOS()"
               class="hidden bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-[11px] transition-all whitespace-nowrap shadow-lg active:scale-95"
@@ -1603,32 +1632,117 @@
             <div class="flex-1 overflow-y-auto hide-scrollbar">
               <!-- Cart Items -->
               <div class="p-5">
-                <div class="flex items-center justify-between mb-5">
-                  <h3
-                    class="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]"
-                  >
-                    &#128722; Pesanan Aktif
-                  </h3>
-                  <span
-                    id="cart-count"
-                    class="text-[9px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-full"
-                    >0 item</span
-                  >
+                <!-- Tab Pesanan -->
+                <div class="flex items-center gap-1 mb-4 bg-slate-100 rounded-xl p-1">
+                  <button onclick="switchOrderTab('offline')" id="tab-offline"
+                    class="order-tab flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all bg-white text-orange-600 shadow-sm">
+                    &#128722; Offline
+                    <span id="tab-offline-count" class="ml-1 bg-orange-100 text-orange-500 px-1.5 py-0.5 rounded-full text-[8px]">0</span>
+                  </button>
+                  <button onclick="switchOrderTab('qrmeja')" id="tab-qrmeja"
+                    class="order-tab flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all text-slate-400">
+                    &#128241; QR Meja
+                    <span id="tab-qrmeja-count" class="ml-1 bg-slate-200 text-slate-400 px-1.5 py-0.5 rounded-full text-[8px]">0</span>
+                  </button>
                 </div>
+
+                <!-- Cart count -->
+                <div class="flex items-center justify-between mb-3" id="cart-header-offline">
+                  <h3 class="text-[9px] font-black text-slate-300 uppercase tracking-[0.15em]">Pesanan Langsung</h3>
+                  <span id="cart-count" class="text-[9px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-full">0 item</span>
+                </div>
+
+                <!-- Offline cart list -->
                 <div id="cart-list" class="space-y-3"></div>
                 <div id="cart-empty" class="text-center py-10">
                   <p class="text-4xl mb-3 opacity-20">&#128722;</p>
-                  <p
-                    class="text-slate-300 text-xs font-bold uppercase tracking-widest"
-                  >
-                    Keranjang Kosong
-                  </p>
+                  <p class="text-slate-300 text-xs font-bold uppercase tracking-widest">Keranjang Kosong</p>
+                </div>
+
+                <!-- QR Meja orders list -->
+                <div id="qrmeja-header" class="hidden">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-[9px] font-black text-slate-300 uppercase tracking-[0.15em]">Pesanan dari QR Meja</h3>
+                  </div>
+                </div>
+                <div id="qrmeja-list" class="hidden space-y-3"></div>
+                <div id="qrmeja-empty" class="hidden text-center py-10">
+                  <p class="text-4xl mb-3 opacity-20">&#128241;</p>
+                  <p class="text-slate-300 text-xs font-bold uppercase tracking-widest">Belum Ada Pesanan QR</p>
                 </div>
               </div>
 
               <!-- Payment Options -->
               <div class="px-5 pb-4">
-                <div class="mb-4 px-1 py-3 bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl text-center shadow-lg">
+
+                <!-- 0. Nama Customer & Tipe Pesanan -->
+                <div class="mb-3 p-3 bg-blue-50 rounded-2xl border border-blue-100">
+                  <p class="text-[8px] font-black text-blue-500 uppercase mb-2 tracking-widest">&#128221; Info Pesanan</p>
+                  <input
+                    type="text"
+                    id="input-nama-customer"
+                    placeholder="Nama Customer..."
+                    class="w-full bg-white px-3 py-2 rounded-xl font-semibold text-sm outline-none border-2 border-blue-100 focus:border-blue-400 transition-all text-slate-600 mb-2"
+                  />
+                  <div class="grid grid-cols-2 gap-2">
+                    <button
+                      onclick="setTipePesanan('Dine In')"
+                      id="tipe-dinein"
+                      class="tipe-btn py-2 rounded-xl border-2 border-blue-400 bg-blue-50 text-blue-600 font-black text-[10px] transition-all active:scale-95"
+                    >
+                      &#127869; Dine In
+                    </button>
+                    <button
+                      onclick="setTipePesanan('Take Away')"
+                      id="tipe-takeaway"
+                      class="tipe-btn py-2 rounded-xl border-2 border-slate-100 bg-white text-slate-400 font-bold text-[10px] transition-all active:scale-95"
+                    >
+                      &#128230; Take Away
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 1. Pelanggan -->
+                <div
+                  class="mb-3 p-3 bg-pink-50 rounded-2xl border border-pink-100"
+                >
+                  <p
+                    class="text-[8px] font-black text-pink-500 uppercase mb-2 tracking-widest"
+                  >
+                    &#128100; Pelanggan
+                  </p>
+                  <div class="flex space-x-2">
+                    <input
+                      type="tel"
+                      id="input-telp-pelanggan"
+                      oninput="cariPelangganByTelp()"
+                      placeholder="Masukkan No. Telp..."
+                      class="flex-1 bg-white px-3 py-2 rounded-xl font-semibold text-sm outline-none border-2 border-pink-100 focus:border-pink-400 transition-all text-slate-600"
+                    />
+                    <button
+                      onclick="clearPelanggan()"
+                      class="bg-slate-200 hover:bg-slate-300 text-slate-500 px-3 rounded-xl font-black text-xs transition-all"
+                      title="Reset pelanggan"
+                    >
+                      &#10005;
+                    </button>
+                  </div>
+                  <input type="hidden" id="select-pelanggan" value="" />
+                  <div
+                    id="pelanggan-info"
+                    class="hidden mt-2 text-[10px] text-pink-600 font-bold"
+                  ></div>
+                  <div
+                    id="pelanggan-not-found"
+                    class="hidden mt-2"
+                  >
+                    <p class="text-[10px] text-slate-400 font-bold mb-1">Pelanggan tidak ditemukan</p>
+                    <button onclick="quickAddPelangganByTelp()" class="text-[9px] bg-pink-500 hover:bg-pink-600 text-white py-1.5 px-3 rounded-lg font-black transition-all active:scale-95">+ Daftarkan Pelanggan Baru</button>
+                  </div>
+                </div>
+
+                <!-- 2. Total Bayar (dengan diskon) -->
+                <div class="mb-3 px-1 py-3 bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl text-center shadow-lg">
                   <p
                     class="text-[9px] font-black text-white/40 uppercase mb-1 tracking-widest"
                   >
@@ -1639,8 +1753,30 @@
                     class="text-3xl font-black text-white tracking-tighter"
                     >Rp 0</span
                   >
+                  <div id="diskon-display" class="hidden mt-1">
+                    <span class="text-[9px] font-bold text-emerald-400">&#11088; Diskon poin diterapkan</span>
+                  </div>
                 </div>
 
+                <!-- 3. Metode Pembayaran -->
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                  <button
+                    onclick="setPayment('Tunai')"
+                    id="pay-Tunai"
+                    class="pay-btn py-3 rounded-xl border-2 border-orange-200 bg-orange-50 text-orange-600 font-black text-[11px] transition-all active:scale-95"
+                  >
+                    &#128181; TUNAI
+                  </button>
+                  <button
+                    onclick="setPayment('QRIS')"
+                    id="pay-QRIS"
+                    class="pay-btn py-3 rounded-xl border-2 border-slate-100 bg-white text-slate-400 font-bold text-[11px] transition-all active:scale-95"
+                  >
+                    &#128241; QRIS
+                  </button>
+                </div>
+
+                <!-- 4. Kembalian (hanya untuk Tunai) -->
                 <div
                   id="cash-calculator"
                   class="mb-3 p-3 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border border-orange-100"
@@ -1704,52 +1840,6 @@
                   </div>
                 </div>
 
-                <!-- Pelanggan Selector -->
-                <div
-                  class="mb-3 p-3 bg-pink-50 rounded-2xl border border-pink-100"
-                >
-                  <p
-                    class="text-[8px] font-black text-pink-500 uppercase mb-2 tracking-widest"
-                  >
-                    &#128100; Pelanggan
-                  </p>
-                  <div class="flex space-x-2">
-                    <select
-                      id="select-pelanggan"
-                      class="flex-1 bg-white px-3 py-2 rounded-xl font-semibold text-sm outline-none border-2 border-pink-100 focus:border-pink-400 transition-all text-slate-600"
-                    >
-                      <option value="">-- Umum (tanpa member) --</option>
-                    </select>
-                    <button
-                      onclick="quickAddPelanggan()"
-                      class="bg-pink-500 hover:bg-pink-600 text-white px-3 rounded-xl font-black text-xs transition-all"
-                      title="Tambah pelanggan baru"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <div
-                    id="pelanggan-info"
-                    class="hidden mt-2 text-[10px] text-pink-600 font-bold"
-                  ></div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                  <button
-                    onclick="setPayment('Tunai')"
-                    id="pay-Tunai"
-                    class="pay-btn py-3 rounded-xl border-2 border-orange-200 bg-orange-50 text-orange-600 font-black text-[11px] transition-all active:scale-95"
-                  >
-                    &#128181; TUNAI
-                  </button>
-                  <button
-                    onclick="setPayment('QRIS')"
-                    id="pay-QRIS"
-                    class="pay-btn py-3 rounded-xl border-2 border-slate-100 bg-white text-slate-400 font-bold text-[11px] transition-all active:scale-95"
-                  >
-                    &#128241; QRIS
-                  </button>
-                </div>
               </div>
             </div>
 
@@ -1832,6 +1922,76 @@
     </div>
 
     <!-- ==================== STOK MODAL ==================== -->
+    <div
+      id="shift-report-modal"
+      class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[120] p-4 backdrop-blur-sm"
+    >
+      <div class="bg-white w-full max-w-[500px] rounded-[24px] sm:rounded-[30px] p-5 sm:p-8 shadow-2xl max-h-[90vh] flex flex-col modal-content">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h3 class="font-black text-slate-800 text-lg uppercase tracking-tight">&#128203; Report Shift</h3>
+            <p class="text-[10px] text-slate-400 font-bold tracking-widest" id="shift-report-subtitle"></p>
+          </div>
+          <button onclick="closeShiftReportModal()" class="bg-slate-100 hover:bg-red-50 hover:text-red-500 p-3 rounded-xl transition-all text-slate-400 active:scale-90">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div id="shift-report-content" class="flex-1 overflow-y-auto hide-scrollbar"></div>
+      </div>
+    </div>
+
+    <div
+      id="reset-omzet-modal"
+      class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[120] p-4 backdrop-blur-sm"
+    >
+      <div class="bg-white w-full max-w-[420px] rounded-[24px] sm:rounded-[30px] p-5 sm:p-8 shadow-2xl modal-content">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h3 class="font-black text-slate-800 text-lg uppercase tracking-tight">&#128260; Reset Omzet</h3>
+            <p class="text-[10px] text-slate-400 font-bold tracking-widest">ADMIN / OWNER</p>
+          </div>
+          <button onclick="closeResetModal()" class="bg-slate-100 hover:bg-red-50 hover:text-red-500 p-3 rounded-xl transition-all text-slate-400 active:scale-90">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <button onclick="konfirmasiReset('hari_ini')" class="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-white py-4 px-5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-yellow-200/50 flex items-center justify-between">
+            <div class="text-left">
+              <p>&#128197; Reset Hari Ini</p>
+              <p class="text-[9px] font-bold opacity-80 normal-case tracking-normal mt-0.5">Hapus transaksi hari ini saja</p>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+
+          <button onclick="konfirmasiReset('semua')" class="w-full bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white py-4 px-5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-red-200/50 flex items-center justify-between">
+            <div class="text-left">
+              <p>&#9888; Reset Semua</p>
+              <p class="text-[9px] font-bold opacity-80 normal-case tracking-normal mt-0.5">Hapus semua data transaksi (permanen)</p>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+
+        <!-- Konfirmasi panel (hidden by default) -->
+        <div id="reset-konfirmasi-panel" class="hidden mt-4">
+          <div class="bg-red-50 border-2 border-red-200 rounded-2xl p-4 text-center">
+            <p class="text-3xl mb-2">&#9888;</p>
+            <p id="reset-konfirmasi-text" class="font-black text-red-700 text-sm mb-1"></p>
+            <p class="text-[10px] text-red-400 font-bold mb-4">Tindakan ini tidak dapat dibatalkan!</p>
+            <div class="flex space-x-2">
+              <button onclick="batalReset()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-600 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95">Batal</button>
+              <button id="btn-reset-confirm" onclick="eksekusiReset()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95">Ya, Reset!</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div
       id="stok-modal"
       class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[110] p-4 backdrop-blur-sm"
@@ -2413,9 +2573,10 @@
           <p class="text-3xl mb-1">&#9749;</p>
           <h2 class="text-lg font-black">Warkop Urban</h2>
           <p id="receipt-date" class="text-[8px] text-slate-400"></p>
+          <p id="receipt-customer" class="text-[9px] font-bold text-slate-600 mt-1"></p>
           <p
             id="receipt-method"
-            class="text-[8px] font-bold text-orange-600 mt-1"
+            class="text-[8px] font-bold text-orange-600 mt-0.5"
           ></p>
         </div>
         <div id="receipt-items" class="space-y-1 mb-4"></div>
@@ -2556,6 +2717,16 @@
       let userRole = "Kasir";
       let currentUser = "";
       let selectedPayment = "Tunai";
+      let tipePesanan = "Dine In";
+
+      function setTipePesanan(tipe) {
+        tipePesanan = tipe;
+        document.querySelectorAll(".tipe-btn").forEach((btn) => {
+          btn.className = "tipe-btn py-2 rounded-xl border-2 border-slate-100 bg-white text-slate-400 font-bold text-[10px] transition-all active:scale-95";
+        });
+        const active = document.getElementById("tipe-" + (tipe === "Dine In" ? "dinein" : "takeaway"));
+        active.className = "tipe-btn py-2 rounded-xl border-2 border-blue-400 bg-blue-50 text-blue-600 font-black text-[10px] transition-all active:scale-95";
+      }
 
       function saveToLocalStorage() {
         localStorage.setItem("urban_history", JSON.stringify(historyTransaksi));
@@ -2568,16 +2739,13 @@
 
       function togglePin() {
         const input = document.getElementById("passInput");
-        const eyeOff = document.getElementById("eyeOff");
-        const eyeOn = document.getElementById("eyeOn");
+        const svg = document.getElementById("eyeIcon");
         if (input.type === "password") {
           input.type = "text";
-          eyeOff.classList.add("hidden");
-          eyeOn.classList.remove("hidden");
+          svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
         } else {
           input.type = "password";
-          eyeOff.classList.remove("hidden");
-          eyeOn.classList.add("hidden");
+          svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><line x1="4" y1="4" x2="20" y2="20" stroke-linecap="round" />';
         }
       }
 
@@ -2646,11 +2814,28 @@
         document.getElementById("qr-url-text").textContent = url;
       }
 
+      // ===== LOGIN ERROR POPUP =====
+      function showLoginError(msg) {
+        document.getElementById("login-error-msg").textContent = msg;
+        const popup = document.getElementById("login-error-popup");
+        const box = document.getElementById("login-error-box");
+        popup.style.opacity = "1";
+        popup.style.pointerEvents = "auto";
+        box.style.transform = "scale(1)";
+      }
+      function closeLoginError() {
+        const popup = document.getElementById("login-error-popup");
+        const box = document.getElementById("login-error-box");
+        popup.style.opacity = "0";
+        popup.style.pointerEvents = "none";
+        box.style.transform = "scale(0.9)";
+      }
+
       // ===== LOGIN =====
       async function checkLogin() {
         const pin = document.getElementById("passInput").value;
         const username = document.getElementById("userInput").value.trim();
-        if (!username || !pin) return alert("Username dan PIN wajib diisi!");
+        if (!username || !pin) return showLoginError("Username dan PIN wajib diisi!");
         document
           .getElementById("loading-screen")
           .classList.replace("hidden", "flex");
@@ -2665,7 +2850,7 @@
             document
               .getElementById("loading-screen")
               .classList.replace("flex", "hidden");
-            return alert(data.pesan || "Login gagal!");
+            return showLoginError(data.pesan || "Username atau PIN salah!");
           }
           currentUser = data.user.username;
           window._roleAsli = data.user.role;
@@ -2686,7 +2871,7 @@
           document
             .getElementById("loading-screen")
             .classList.replace("flex", "hidden");
-          alert("Gagal terhubung ke server!");
+          showLoginError("Gagal terhubung ke server!");
         }
       }
 
@@ -2998,12 +3183,55 @@
         }
       }
 
+      // ===== RESET OMZET =====
+      let _resetMode = null;
+
+      function openResetModal() {
+        const hak = window._hakAkses || [];
+        if (!hak.includes("reset_omzet")) return alert("AKSES DITOLAK. Hanya Admin/Owner.");
+        const modal = document.getElementById("reset-omzet-modal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        batalReset();
+      }
+
+      function closeResetModal() {
+        const modal = document.getElementById("reset-omzet-modal");
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        _resetMode = null;
+      }
+
+      function konfirmasiReset(mode) {
+        _resetMode = mode;
+        const panel = document.getElementById("reset-konfirmasi-panel");
+        const text = document.getElementById("reset-konfirmasi-text");
+        text.textContent = mode === "semua"
+          ? "Hapus SEMUA data transaksi?"
+          : "Hapus transaksi HARI INI?";
+        panel.classList.remove("hidden");
+      }
+
+      function batalReset() {
+        _resetMode = null;
+        document.getElementById("reset-konfirmasi-panel").classList.add("hidden");
+      }
+
+      function eksekusiReset() {
+        if (!_resetMode) return;
+        socket.emit("reset-omzet", { mode: _resetMode });
+        const label = _resetMode === "semua" ? "SEMUA TRANSAKSI" : "TRANSAKSI HARI INI";
+        showToast(`RESET ${label} BERHASIL`);
+        closeResetModal();
+      }
+
       // ===== DASHBOARD =====
       function updateDashboard() {
         const container = document.getElementById("daily-omzet-container");
         const hak = window._hakAkses || [];
         const bisaLihatOmzet = hak.includes("laporan_keuangan");
         const bisaVoid = hak.includes("void");
+        const bisaReset = hak.includes("reset_omzet");
 
         if (bisaLihatOmzet) {
           const tunai = historyTransaksi
@@ -3024,24 +3252,31 @@
                 <span class="text-[7px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-md font-bold">&#128181; ${tunai.toLocaleString("id-ID")}</span>
                 <span class="text-[7px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-md font-bold">&#128241; ${qris.toLocaleString("id-ID")}</span>
               </div>
-              <div class="flex space-x-2 mt-1.5">
+              <div class="flex flex-wrap gap-1.5 mt-1.5">
                 ${bisaVoid ? '<button onclick="event.stopPropagation(); voidLastTransaction()" class="text-[9px] bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white py-1.5 px-3 rounded-lg font-black uppercase tracking-wider transition-all active:scale-95">&#128465; Void</button>' : ""}
+                ${bisaReset ? '<button onclick="event.stopPropagation(); openResetModal()" class="text-[9px] bg-yellow-500/20 hover:bg-yellow-500 text-yellow-400 hover:text-white py-1.5 px-3 rounded-lg font-black uppercase tracking-wider transition-all active:scale-95">&#128260; Reset Omzet</button>' : ""}
                 <span class="text-[7px] text-slate-500 py-1 font-bold">&#128073; Klik untuk detail</span>
               </div>
             </div>`;
         } else {
+          const jmlTrx = historyTransaksi.length;
+          const now = new Date();
+          const jam = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
           container.innerHTML = `
             <div class="flex flex-col">
-              <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Omzet Hari Ini</p>
-              <p class="text-sm font-black shimmer-text">Rp ********</p>
-              ${bisaVoid ? '<button onclick="event.stopPropagation(); voidLastTransaction()" class="mt-1.5 text-[7px] bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white py-1 px-2 rounded-lg font-black uppercase tracking-widest transition-all">&#128465; Void</button>' : ""}
+              <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">&#128100; ${currentUser || 'Kasir'}</p>
+              <div class="flex items-center space-x-2">
+                <span class="text-[7px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-md font-bold">&#128202; ${jmlTrx} transaksi</span>
+                <span class="text-[7px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-md font-bold">&#128344; ${jam}</span>
+              </div>
             </div>`;
         }
       }
 
       // ===== CHANGE CALCULATOR =====
       function calculateChange() {
-        const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const total = subtotal - (_diskonPoin || 0);
         const received =
           parseInt(document.getElementById("cash-received").value) || 0;
         const change = received - total;
@@ -3183,6 +3418,13 @@
         calculateChange();
       }
 
+      function deleteFromCart(id) {
+        const idx = cart.findIndex((i) => i.id === id);
+        if (idx > -1) cart.splice(idx, 1);
+        updateUI();
+        calculateChange();
+      }
+
       function updateUI() {
         const list = document.getElementById("cart-list");
         const empty = document.getElementById("cart-empty");
@@ -3197,6 +3439,7 @@
         totalEl.classList.add("total-tick");
         const totalQty = cart.reduce((s, i) => s + i.qty, 0);
         countEl.textContent = totalQty + " item";
+        if (typeof updateTabCounts === 'function') updateTabCounts();
 
         // Update mobile FAB badge
         const fabBadge = document.getElementById("fab-badge");
@@ -3207,7 +3450,12 @@
           empty.classList.add("hidden");
         } else {
           confirmBtn.classList.remove("btn-pulse");
-          empty.classList.remove("hidden");
+          // Hanya tampilkan empty jika tab offline aktif
+          if (typeof currentOrderTab === 'undefined' || currentOrderTab === 'offline') {
+            empty.classList.remove("hidden");
+          } else {
+            empty.classList.add("hidden");
+          }
         }
 
         list.innerHTML = cart
@@ -3221,10 +3469,12 @@
                 <p class="text-orange-600 font-black text-sm">Rp ${(item.price * item.qty).toLocaleString("id-ID")}</p>
               </div>
             </div>
-            <div class="flex items-center space-x-2">
-              <span class="bg-orange-100 text-orange-700 text-[11px] font-black px-2.5 py-1 rounded-lg">x${item.qty}</span>
-              <button onclick="removeFromCart(${item.id})" class="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-all active:scale-90">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-center space-x-1.5">
+              <button onclick="removeFromCart(${item.id})" class="w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-500 text-red-400 hover:text-white rounded-lg font-black text-sm transition-all active:scale-90">-</button>
+              <span class="bg-orange-100 text-orange-700 text-[11px] font-black px-2.5 py-1 rounded-lg min-w-[32px] text-center">x${item.qty}</span>
+              <button onclick="addToCart('${item.name.replace(/'/g, "\\'")}', ${item.price}, ${item.id})" class="w-7 h-7 flex items-center justify-center bg-emerald-50 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg font-black text-sm transition-all active:scale-90">+</button>
+              <button onclick="deleteFromCart(${item.id})" class="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-lg transition-all active:scale-90 ml-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
@@ -3245,13 +3495,17 @@
         active.className =
           "pay-btn py-3 rounded-xl border-2 border-orange-500 bg-gradient-to-r from-orange-50 to-amber-50 text-orange-600 font-black text-[11px] shadow-sm transition-all active:scale-95";
         const calc = document.getElementById("cash-calculator");
-        if (method === "QRIS") calc.classList.add("hidden");
-        else calc.classList.remove("hidden");
+        if (method === "QRIS") {
+          calc.classList.add("hidden");
+        } else {
+          calc.classList.remove("hidden");
+        }
       }
 
       function handleProcess() {
         if (!cart.length) return alert("KERANJANG KOSONG!");
-        const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const total = subtotal - (_diskonPoin || 0);
         if (selectedPayment === "QRIS") {
           document.getElementById("qris-total-display").innerText =
             `Rp ${total.toLocaleString("id-ID")}`;
@@ -3273,8 +3527,10 @@
       }
 
       function completeTransaction(received) {
-        const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const total = subtotal - _diskonPoin;
         totalOmzet += total;
+        const namaCustomer = document.getElementById("input-nama-customer").value.trim() || "Umum";
         const newItems = [];
         cart.forEach((item) => {
           const record = {
@@ -3284,6 +3540,8 @@
             Qty: item.qty,
             Total: item.price * item.qty,
             Metode: selectedPayment,
+            Customer: namaCustomer,
+            Tipe: tipePesanan,
           };
           historyTransaksi.push(record);
           newItems.push(record);
@@ -3317,19 +3575,27 @@
 
       // ===== RECEIPT =====
       function showStruk(received) {
-        const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const total = subtotal - (_diskonPoin || 0);
+        const namaCustomer = document.getElementById("input-nama-customer").value.trim() || "Umum";
         document.getElementById("receipt-date").innerText =
           new Date().toLocaleString("id-ID");
+        document.getElementById("receipt-customer").innerText =
+          namaCustomer + " | " + tipePesanan;
         document.getElementById("receipt-method").innerText =
           "METODE: " + selectedPayment;
-        document.getElementById("receipt-total").innerText =
-          `Rp ${total.toLocaleString("id-ID")}`;
-        document.getElementById("receipt-items").innerHTML = cart
+        let itemsHtml = cart
           .map(
             (i) =>
               `<div class="flex justify-between"><span>${i.name} x${i.qty}</span><span>${(i.price * i.qty).toLocaleString("id-ID")}</span></div>`,
           )
           .join("");
+        if (_diskonPoin > 0) {
+          itemsHtml += `<div class="flex justify-between text-emerald-600 font-bold border-t border-dashed border-gray-200 pt-1 mt-1"><span>DISKON POIN</span><span>-Rp ${_diskonPoin.toLocaleString("id-ID")}</span></div>`;
+        }
+        document.getElementById("receipt-items").innerHTML = itemsHtml;
+        document.getElementById("receipt-total").innerText =
+          `Rp ${total.toLocaleString("id-ID")}`;
         const detailCash = document.getElementById("receipt-cash-detail");
         if (selectedPayment === "Tunai") {
           detailCash.classList.remove("hidden");
@@ -3357,10 +3623,12 @@
       function closeModal() {
         document.getElementById("modal-overlay").classList.add("hidden");
         cart = [];
+        _diskonPoin = 0;
         document.getElementById("cash-received").value = "";
         document.getElementById("cash-change").innerText = "Rp 0";
-        document.getElementById("select-pelanggan").value = "";
-        updatePelangganInfo();
+        document.getElementById("input-nama-customer").value = "";
+        setTipePesanan("Dine In");
+        clearPelanggan();
         updateUI();
       }
 
@@ -4929,65 +5197,181 @@
       }
 
       function renderPelangganSelect() {
-        const sel = document.getElementById("select-pelanggan");
-        const val = sel.value;
-        sel.innerHTML =
-          '<option value="">-- Umum (tanpa member) --</option>' +
-          pelangganList
-            .map(
-              (p) =>
-                `<option value="${p.id}">${p.nama} (${p.poin} poin)</option>`,
-            )
-            .join("");
-        sel.value = val;
-        updatePelangganInfo();
+        // Backward compat — no longer uses dropdown
       }
 
-      // Show poin info when customer selected
-      document.addEventListener("change", (e) => {
-        if (e.target.id === "select-pelanggan") updatePelangganInfo();
-      });
+      let _cariTelpTimeout = null;
+      let _diskonPoin = 0; // diskon dari tukar poin
 
-      function updatePelangganInfo() {
-        const sel = document.getElementById("select-pelanggan");
+      function cariPelangganByTelp() {
+        const telp = document.getElementById("input-telp-pelanggan").value.trim();
         const info = document.getElementById("pelanggan-info");
-        const plg = pelangganList.find((p) => p.id == sel.value);
-        if (plg) {
-          info.classList.remove("hidden");
-          info.innerHTML = `&#11088; <b>${plg.poin}</b> poin &mdash; Total belanja: Rp ${plg.total_belanja.toLocaleString("id-ID")} &mdash; ${plg.total_kunjungan}x kunjungan`;
-        } else {
-          info.classList.add("hidden");
-        }
-      }
+        const notFound = document.getElementById("pelanggan-not-found");
+        const sel = document.getElementById("select-pelanggan");
 
-      function quickAddPelanggan() {
-        const nama = prompt("Nama pelanggan:");
-        if (!nama || !nama.trim()) return;
-        const namaTrimmed = nama.trim();
-        // Cek apakah pelanggan dengan nama sama sudah ada
-        const existing = pelangganList.find(
-          (p) => p.nama.toLowerCase() === namaTrimmed.toLowerCase()
-        );
-        if (existing) {
-          document.getElementById("select-pelanggan").value = existing.id;
-          updatePelangganInfo();
-          showToast(`PELANGGAN "${existing.nama}" DIPILIH! (${existing.poin} poin)`);
+        if (!telp || telp.length < 4) {
+          info.classList.add("hidden");
+          notFound.classList.add("hidden");
+          sel.value = "";
           return;
         }
+
+        clearTimeout(_cariTelpTimeout);
+        _cariTelpTimeout = setTimeout(async () => {
+          try {
+            const res = await fetch("/api/pelanggan/cari-telp/" + encodeURIComponent(telp));
+            const data = await res.json();
+            if (data.found) {
+              const plg = data.pelanggan;
+              sel.value = plg.id;
+              info.classList.remove("hidden");
+              notFound.classList.add("hidden");
+              const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+              const maxDiskon = Math.min(plg.poin * 300, total);
+              const maxPoinPakai = Math.floor(maxDiskon / 300);
+              let poinHtml = '';
+              if (plg.poin > 0 && total > 0) {
+                poinHtml = `
+                <div class="mt-2 p-2.5 bg-white rounded-xl border border-pink-200">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[8px] font-black text-pink-500 uppercase tracking-widest">&#11088; Tukar Poin</span>
+                    <span class="text-[8px] font-bold text-slate-400">1 poin = Rp 300</span>
+                  </div>
+                  <div class="flex items-center space-x-2 mb-1.5">
+                    <button onclick="ubahPoinInput(-1)" class="w-7 h-7 flex items-center justify-center bg-pink-100 hover:bg-pink-200 text-pink-600 rounded-lg font-black text-sm transition-all active:scale-90">-</button>
+                    <input type="number" id="poin-input" value="0" min="0" max="${maxPoinPakai}" oninput="previewDiskonPoin(${plg.poin}, ${total})" class="flex-1 text-center bg-pink-50 border-2 border-pink-200 focus:border-pink-400 rounded-lg py-1.5 font-black text-sm text-pink-600 outline-none transition-all" />
+                    <button onclick="ubahPoinInput(1)" class="w-7 h-7 flex items-center justify-center bg-pink-100 hover:bg-pink-200 text-pink-600 rounded-lg font-black text-sm transition-all active:scale-90">+</button>
+                    <button onclick="setPoinMax(${maxPoinPakai})" class="text-[8px] bg-pink-100 hover:bg-pink-200 text-pink-600 px-2 py-1.5 rounded-lg font-black transition-all active:scale-90">MAX</button>
+                  </div>
+                  <div id="poin-preview" class="text-[9px] text-slate-400 font-bold mb-1.5">Pilih jumlah poin untuk ditukar</div>
+                  <button onclick="konfirmasiTukarPoin(${plg.id}, ${plg.poin}, ${total})" id="btn-tukar-poin" class="w-full text-[9px] bg-pink-400 text-white/50 py-2 rounded-lg font-black uppercase tracking-wider cursor-not-allowed transition-all" disabled>Pilih Poin Dulu</button>
+                </div>`;
+              }
+              info.innerHTML = `&#9989; <b>${plg.nama}</b> &mdash; &#11088; ${plg.poin} poin (= Rp ${(plg.poin * 300).toLocaleString("id-ID")})<br>
+                <span class="text-[9px] text-slate-400">Belanja: Rp ${plg.total_belanja.toLocaleString("id-ID")} &mdash; ${plg.total_kunjungan}x kunjungan</span>
+                ${poinHtml}`;
+            } else {
+              sel.value = "";
+              info.classList.add("hidden");
+              notFound.classList.remove("hidden");
+            }
+          } catch (e) {
+            console.error("Gagal cari pelanggan:", e);
+          }
+        }, 400);
+      }
+
+      function ubahPoinInput(delta) {
+        const inp = document.getElementById("poin-input");
+        if (!inp) return;
+        const max = parseInt(inp.max) || 0;
+        let val = (parseInt(inp.value) || 0) + delta;
+        if (val < 0) val = 0;
+        if (val > max) val = max;
+        inp.value = val;
+        inp.dispatchEvent(new Event('input'));
+      }
+
+      function setPoinMax(max) {
+        const inp = document.getElementById("poin-input");
+        if (!inp) return;
+        inp.value = max;
+        inp.dispatchEvent(new Event('input'));
+      }
+
+      function previewDiskonPoin(maxPoin, totalPesanan) {
+        const inp = document.getElementById("poin-input");
+        const preview = document.getElementById("poin-preview");
+        const btn = document.getElementById("btn-tukar-poin");
+        if (!inp || !preview || !btn) return;
+        let val = parseInt(inp.value) || 0;
+        const maxDiskon = Math.min(maxPoin * 300, totalPesanan);
+        const maxPakai = Math.floor(maxDiskon / 300);
+        if (val > maxPakai) { val = maxPakai; inp.value = val; }
+        if (val < 0) { val = 0; inp.value = 0; }
+        const diskon = val * 300;
+        const totalBaru = totalPesanan - diskon;
+        if (val > 0) {
+          preview.innerHTML = `Diskon: <b class="text-pink-600">Rp ${diskon.toLocaleString("id-ID")}</b> &rarr; Total: <b class="text-emerald-600">Rp ${totalBaru.toLocaleString("id-ID")}</b>`;
+          btn.disabled = false;
+          btn.className = "w-full text-[9px] bg-pink-500 hover:bg-pink-600 text-white py-2 rounded-lg font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer";
+          btn.textContent = "Pakai " + val + " Poin (Diskon Rp " + diskon.toLocaleString("id-ID") + ")";
+        } else {
+          preview.innerHTML = "Pilih jumlah poin untuk ditukar";
+          btn.disabled = true;
+          btn.className = "w-full text-[9px] bg-pink-400 text-white/50 py-2 rounded-lg font-black uppercase tracking-wider cursor-not-allowed transition-all";
+          btn.textContent = "Pilih Poin Dulu";
+        }
+      }
+
+      async function konfirmasiTukarPoin(pelangganId, maxPoin, totalPesanan) {
+        const inp = document.getElementById("poin-input");
+        const poin = parseInt(inp?.value) || 0;
+        if (poin <= 0) return;
+        const role = window._roleAsli || "kasir";
+        try {
+          const res = await fetch(`/api/pelanggan/${pelangganId}/tukar-poin`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-role": role },
+            body: JSON.stringify({ poin }),
+          });
+          const data = await res.json();
+          if (!data.success) return alert(data.pesan || "Gagal tukar poin!");
+          _diskonPoin = data.diskon;
+          updateTotalWithDiskon();
+          await loadPelanggan();
+          cariPelangganByTelp();
+          showToast(`DISKON Rp ${data.diskon.toLocaleString("id-ID")} DARI ${poin} POIN!`);
+        } catch (e) {
+          alert("Gagal terhubung ke server!");
+        }
+      }
+
+      function updateTotalWithDiskon() {
+        const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const totalEl = document.getElementById("total-price");
+        const diskonEl = document.getElementById("diskon-display");
+        if (_diskonPoin > 0) {
+          totalEl.innerHTML = `<span class="line-through text-white/30 text-lg">Rp ${total.toLocaleString("id-ID")}</span><br>Rp ${(total - _diskonPoin).toLocaleString("id-ID")}`;
+          if (diskonEl) {
+            diskonEl.classList.remove("hidden");
+            diskonEl.innerHTML = `<span class="text-[9px] font-bold text-emerald-400">&#11088; Diskon ${_diskonPoin.toLocaleString("id-ID")} dari poin</span>`;
+          }
+        } else {
+          totalEl.innerText = `Rp ${total.toLocaleString("id-ID")}`;
+          if (diskonEl) diskonEl.classList.add("hidden");
+        }
+      }
+
+      function clearPelanggan() {
+        document.getElementById("input-telp-pelanggan").value = "";
+        document.getElementById("select-pelanggan").value = "";
+        document.getElementById("pelanggan-info").classList.add("hidden");
+        document.getElementById("pelanggan-not-found").classList.add("hidden");
+        _diskonPoin = 0;
+        updateTotalWithDiskon();
+      }
+
+      function quickAddPelangganByTelp() {
+        const telp = document.getElementById("input-telp-pelanggan").value.trim();
+        if (!telp) return alert("Nomor telepon kosong!");
+        const nama = prompt("Nama pelanggan untuk No. " + telp + ":");
+        if (!nama || !nama.trim()) return;
         const role = window._roleAsli || "kasir";
         fetch("/api/pelanggan", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-role": role },
-          body: JSON.stringify({ nama: namaTrimmed, telp: "" }),
+          body: JSON.stringify({ nama: nama.trim(), telp }),
         })
           .then((r) => r.json())
           .then((data) => {
             if (data.success) {
               loadPelanggan().then(() => {
-                document.getElementById("select-pelanggan").value = data.id;
-                updatePelangganInfo();
+                cariPelangganByTelp();
               });
               showToast("PELANGGAN BARU DITAMBAHKAN!");
+            } else {
+              alert(data.pesan || "Gagal menambah pelanggan!");
             }
           })
           .catch(() => alert("Gagal menambah pelanggan!"));
@@ -5082,7 +5466,7 @@
               </div>
               <div class="bg-emerald-50 rounded-xl p-2 text-center">
                 <p class="text-[7px] text-emerald-400 font-bold uppercase">Nilai Poin</p>
-                <p class="text-[10px] font-black text-emerald-600">Rp ${(p.poin * 1000).toLocaleString("id-ID")}</p>
+                <p class="text-[10px] font-black text-emerald-600">Rp ${(p.poin * 300).toLocaleString("id-ID")}</p>
               </div>
             </div>
 
@@ -5096,7 +5480,7 @@
                 ? `
             <button onclick="crmTukarPoin(${p.id},'${p.nama.replace(/'/g, "\\'")}',${p.poin})"
               class="w-full mt-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm">
-              &#127873; Tukar ${p.poin} Poin (= Rp ${(p.poin * 1000).toLocaleString("id-ID")} diskon)
+              &#127873; Tukar ${p.poin} Poin (= Rp ${(p.poin * 300).toLocaleString("id-ID")} diskon)
             </button>`
                 : ""
             }
@@ -5172,7 +5556,7 @@
 
       async function crmTukarPoin(id, nama, maxPoin) {
         const poin = prompt(
-          `Tukar berapa poin? (Maks: ${maxPoin} poin = Rp ${(maxPoin * 1000).toLocaleString("id-ID")} diskon)`,
+          `Tukar berapa poin? (Maks: ${maxPoin} poin = Rp ${(maxPoin * 300).toLocaleString("id-ID")} diskon)\n1 poin = Rp 300`,
           maxPoin,
         );
         if (!poin) return;
@@ -5195,6 +5579,93 @@
           );
         } catch (e) {
           alert("Gagal terhubung ke server!");
+        }
+      }
+
+      // ===== SHIFT REPORT =====
+      function openShiftReportModal() {
+        const modal = document.getElementById("shift-report-modal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        loadShiftReport();
+      }
+
+      function closeShiftReportModal() {
+        const modal = document.getElementById("shift-report-modal");
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+
+      async function loadShiftReport() {
+        const content = document.getElementById("shift-report-content");
+        const subtitle = document.getElementById("shift-report-subtitle");
+        subtitle.textContent = currentUser.toUpperCase() + " — " + new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        content.innerHTML = '<p class="text-center text-slate-400 py-8">Memuat...</p>';
+
+        try {
+          const res = await fetch(`/api/shift/report/${encodeURIComponent(currentUser)}`);
+          const data = await res.json();
+
+          if (!data.shifts || data.shifts.length === 0) {
+            content.innerHTML = '<div class="text-center py-8"><p class="text-3xl mb-2 opacity-20">&#128203;</p><p class="text-slate-300 text-xs font-bold uppercase tracking-widest">Belum ada riwayat shift hari ini</p></div>';
+            return;
+          }
+
+          let html = '';
+          data.shifts.forEach((s, i) => {
+            const clockIn = new Date(s.clock_in);
+            const clockOut = s.clock_out ? new Date(s.clock_out) : null;
+            const durasi = clockOut ? Math.floor((clockOut - clockIn) / 60000) : Math.floor((Date.now() - clockIn.getTime()) / 60000);
+            const jam = Math.floor(durasi / 60);
+            const menit = durasi % 60;
+            const isAktif = s.status === 'aktif';
+            const d = s.detail;
+
+            html += `
+              <div class="mb-4 ${isAktif ? 'bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-200' : 'bg-slate-50 border-slate-100'} border rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-lg">${s.shift === 'Pagi' ? '&#127749;' : '&#127769;'}</span>
+                    <div>
+                      <p class="font-black text-sm text-slate-800">Shift ${s.shift}</p>
+                      <p class="text-[9px] text-slate-400 font-bold">${clockIn.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} ${clockOut ? '→ ' + clockOut.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '→ sekarang'}</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    ${isAktif ? '<span class="text-[8px] font-black text-white bg-emerald-500 px-2 py-0.5 rounded-full animate-pulse">AKTIF</span>' : '<span class="text-[8px] font-black text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">SELESAI</span>'}
+                    <p class="text-[9px] text-slate-400 font-bold mt-0.5">${jam}j ${menit}m</p>
+                  </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                  <div class="bg-white rounded-xl p-2.5 text-center border border-slate-100">
+                    <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">Transaksi</p>
+                    <p class="text-lg font-black text-slate-800">${d.total.trx}</p>
+                  </div>
+                  <div class="bg-white rounded-xl p-2.5 text-center border border-slate-100">
+                    <p class="text-[7px] font-black text-emerald-400 uppercase tracking-widest">&#128181; Tunai</p>
+                    <p class="text-[11px] font-black text-emerald-600">${d.tunai.trx} trx</p>
+                    <p class="text-[9px] font-bold text-emerald-500">Rp ${d.tunai.total.toLocaleString('id-ID')}</p>
+                  </div>
+                  <div class="bg-white rounded-xl p-2.5 text-center border border-slate-100">
+                    <p class="text-[7px] font-black text-purple-400 uppercase tracking-widest">&#128241; QRIS</p>
+                    <p class="text-[11px] font-black text-purple-600">${d.qris.trx} trx</p>
+                    <p class="text-[9px] font-bold text-purple-500">Rp ${d.qris.total.toLocaleString('id-ID')}</p>
+                  </div>
+                </div>
+
+                <!-- Total -->
+                <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl p-3 text-center">
+                  <p class="text-[8px] font-black text-white/40 uppercase tracking-widest">Total Omzet Shift</p>
+                  <p class="text-xl font-black text-white">Rp ${d.total.total.toLocaleString('id-ID')}</p>
+                </div>
+              </div>`;
+          });
+
+          content.innerHTML = html;
+        } catch (e) {
+          content.innerHTML = '<p class="text-center text-red-400 py-8 font-bold">Gagal memuat data shift</p>';
         }
       }
 
@@ -5731,14 +6202,191 @@
         updateDashboard();
         if (_currentView === "dashboard") renderAdminDashboard();
         if (data.voided) showToast("VOID: " + data.voided.Menu);
+        else if (data.resetOmzet) showToast("RESET OMZET: " + (data.resetOmzet === "semua" ? "Semua transaksi dihapus" : "Transaksi hari ini dihapus"));
         else if (data.newItems) showToast("PESANAN BARU MASUK!");
       });
+
+      // ===== TAB PESANAN AKTIF =====
+      let currentOrderTab = 'offline';
+      let qrMejaOrders = []; // { id, meja, items, total, metode, waktu, status }
+
+      function switchOrderTab(tab) {
+        currentOrderTab = tab;
+        // Update tab styles
+        document.getElementById('tab-offline').className = 'order-tab flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ' +
+          (tab === 'offline' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-400');
+        document.getElementById('tab-qrmeja').className = 'order-tab flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ' +
+          (tab === 'qrmeja' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400');
+
+        // Toggle visibility
+        const showOffline = tab === 'offline';
+        document.getElementById('cart-header-offline').style.display = showOffline ? 'flex' : 'none';
+        document.getElementById('cart-list').style.display = showOffline ? '' : 'none';
+        document.getElementById('cart-empty').style.display = showOffline && cart.length === 0 ? '' : 'none';
+        document.getElementById('qrmeja-header').classList.toggle('hidden', showOffline);
+        document.getElementById('qrmeja-list').classList.toggle('hidden', showOffline);
+        document.getElementById('qrmeja-empty').classList.toggle('hidden', showOffline || qrMejaOrders.length > 0);
+        if (!showOffline && qrMejaOrders.length === 0) {
+          document.getElementById('qrmeja-empty').classList.remove('hidden');
+        }
+      }
+
+      function updateTabCounts() {
+        document.getElementById('tab-offline-count').textContent = cart.length;
+        document.getElementById('tab-qrmeja-count').textContent = qrMejaOrders.length;
+      }
+
+      function renderQrMejaOrders() {
+        const list = document.getElementById('qrmeja-list');
+        const empty = document.getElementById('qrmeja-empty');
+        if (qrMejaOrders.length === 0) {
+          list.innerHTML = '';
+          if (currentOrderTab === 'qrmeja') {
+            empty.classList.remove('hidden');
+          }
+          updateTabCounts();
+          return;
+        }
+        empty.classList.add('hidden');
+        list.innerHTML = qrMejaOrders.map(order => {
+          const statusColor = order.status === 'baru' ? 'emerald' : order.status === 'proses' ? 'blue' : 'slate';
+          const statusLabel = order.status === 'baru' ? 'BARU' : order.status === 'proses' ? 'DIPROSES' : 'SELESAI';
+          const headerColor = order.isOnline ? (order.status === 'baru' ? 'from-purple-500 to-indigo-600' : order.status === 'proses' ? 'from-blue-500 to-blue-600' : 'from-slate-500 to-slate-600') : `from-${statusColor}-500 to-${statusColor}-600`;
+          const borderColor = order.isOnline ? (order.status === 'baru' ? 'purple' : statusColor) : statusColor;
+          const itemsHtml = order.items.map(i =>
+            `<div class="text-[10px]"><div class="flex justify-between"><span class="text-slate-600">${i.nama} x${i.qty}</span><span class="font-bold">Rp ${(i.harga * i.qty).toLocaleString('id-ID')}</span></div>${i.ukuran || i.topping || i.catatan ? `<div class="text-[9px] text-orange-500 font-600">${[i.ukuran, i.topping ? i.topping.join(', ') : '', i.catatan].filter(Boolean).join(' · ')}</div>` : ''}</div>`
+          ).join('');
+          const onlineInfo = order.isOnline ? `
+            <div class="px-3 py-2 bg-purple-50 border-b border-purple-100 space-y-0.5">
+              <div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Nama</span><span class="text-purple-700 font-bold">${order.nama}</span></div>
+              <div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Alamat</span><span class="text-purple-700 font-bold">${order.alamat}</span></div>
+              <div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">WA</span><span class="text-purple-700 font-bold">${order.telp}</span></div>
+              ${order.catatan ? `<div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Catatan</span><span class="text-purple-700 font-bold">${order.catatan}</span></div>` : ''}
+            </div>
+          ` : '';
+          return `
+            <div class="bg-white rounded-2xl border-2 border-${borderColor}-200 overflow-hidden shadow-sm" id="qr-order-${order.id}">
+              <div class="bg-gradient-to-r ${headerColor} px-3 py-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">${order.isOnline ? '&#127760;' : '&#127828;'}</span>
+                  <div>
+                    <p class="text-white font-black text-[10px]">${order.isOnline ? 'Online — ' + order.nama : 'Meja ' + order.meja}</p>
+                    <p class="text-white/60 text-[8px] font-bold">${order.waktu} &bull; ${order.tipe || 'Dine In'} &bull; ${order.metode || 'Tunai'}</p>
+                  </div>
+                </div>
+                <span class="bg-white/20 text-white text-[8px] font-black px-2 py-0.5 rounded-full">${order.isOnline ? 'ONLINE' : statusLabel}</span>
+              </div>
+              ${onlineInfo}
+              <div class="px-3 py-2 space-y-1">${itemsHtml}</div>
+              <div class="px-3 py-2 bg-slate-50 border-t flex justify-between items-center">
+                <p class="font-black text-orange-600 text-xs">Rp ${order.total.toLocaleString('id-ID')}</p>
+                <div class="flex gap-1.5">
+                  ${order.status === 'baru' ? `
+                    <button onclick="prosesQrOrder('${order.id}')" class="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-3 py-1.5 rounded-lg font-black text-[9px] uppercase active:scale-95 transition-transform shadow-sm">&#10003; PROSES</button>
+                    <button onclick="hapusQrOrder('${order.id}')" class="bg-slate-100 text-slate-400 px-2 py-1.5 rounded-lg font-bold text-[9px] hover:bg-red-50 hover:text-red-500 transition-all active:scale-95">&#10005;</button>
+                  ` : order.status === 'proses' ? `
+                    <button onclick="selesaiQrOrder('${order.id}')" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg font-black text-[9px] uppercase active:scale-95 transition-transform shadow-sm">&#127881; SELESAI</button>
+                  ` : `
+                    <span class="text-[9px] text-slate-400 font-bold">&#10003; Selesai</span>
+                  `}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        updateTabCounts();
+      }
+
+      function prosesQrOrder(id) {
+        const order = qrMejaOrders.find(o => o.id === id);
+        if (!order) return;
+        // Masukkan ke keranjang kasir
+        order.items.forEach(item => {
+          const existing = cart.find(c => c.id === item.menuId);
+          if (existing) { existing.qty += item.qty; }
+          else { cart.push({ id: item.menuId, name: item.nama, price: item.harga, qty: item.qty }); }
+        });
+        updateUI();
+        calculateChange();
+        order.status = 'proses';
+        renderQrMejaOrders();
+        showToast('PESANAN MEJA ' + order.meja + ' DIPROSES!');
+        launchConfetti();
+        updateTabCounts();
+      }
+
+      function selesaiQrOrder(id) {
+        const order = qrMejaOrders.find(o => o.id === id);
+        if (!order) return;
+        order.status = 'selesai';
+        if (order.isOnline) {
+          // Pesanan online: kirim notif ke semua client online
+          socket.emit('order-ready', { meja: 'online', nama: order.nama });
+          showToast('NOTIFIKASI TERKIRIM KE ' + order.nama + '!');
+        } else {
+          // Pesanan QR meja
+          socket.emit('order-ready', { meja: order.mejaNum || order.meja });
+          showToast('NOTIFIKASI TERKIRIM KE MEJA ' + order.meja + '!');
+        }
+        renderQrMejaOrders();
+        updateTabCounts();
+        setTimeout(() => {
+          qrMejaOrders = qrMejaOrders.filter(o => o.id !== id);
+          renderQrMejaOrders();
+        }, 5000);
+      }
+
+      function hapusQrOrder(id) {
+        qrMejaOrders = qrMejaOrders.filter(o => o.id !== id);
+        renderQrMejaOrders();
+      }
 
       // ===== PESANAN DARI PELANGGAN (SELF-ORDER) =====
       socket.on("customer-order", (data) => {
         if (!data || !data.items) return;
         playCustomerOrderSound();
-        showCustomerOrderNotif(data);
+        // Tambah ke list QR Meja
+        const orderId = 'qr-' + Date.now();
+        qrMejaOrders.unshift({
+          id: orderId,
+          meja: data.meja,
+          mejaNum: data.meja,
+          items: data.items,
+          total: data.total,
+          metode: data.metode || 'Tunai',
+          tipe: data.tipe || 'Dine In',
+          waktu: data.waktu || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          status: 'baru',
+        });
+        renderQrMejaOrders();
+        // Auto switch ke tab QR Meja
+        switchOrderTab('qrmeja');
+        updateTabCounts();
+      });
+
+      // ===== PESANAN ONLINE (dari app / rumah) =====
+      socket.on("online-order", (data) => {
+        if (!data || !data.items) return;
+        playCustomerOrderSound();
+        const orderId = 'online-' + Date.now();
+        qrMejaOrders.unshift({
+          id: orderId,
+          meja: '🌐 ' + (data.nama || 'Online'),
+          nama: data.nama || 'Online',
+          alamat: data.alamat || '-',
+          telp: data.telp || '-',
+          items: data.items,
+          total: data.total,
+          metode: data.metode || 'Tunai',
+          tipe: data.tipe || 'Dine In',
+          catatan: data.catatan || '',
+          waktu: data.waktu || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          status: 'baru',
+          isOnline: true,
+        });
+        renderQrMejaOrders();
+        switchOrderTab('qrmeja');
+        updateTabCounts();
       });
 
       function playCustomerOrderSound() {
@@ -5756,78 +6404,6 @@
             osc.stop(ctx.currentTime + i * 0.15 + 0.25);
           });
         } catch(e) {}
-      }
-
-      function showCustomerOrderNotif(data) {
-        const panel = document.getElementById('customer-orders-panel');
-        const id = 'co-' + Date.now();
-        const itemList = data.items.map(i =>
-          `<div class="flex justify-between text-[11px]"><span class="text-slate-700">${i.nama} x${i.qty}</span><span class="font-bold text-slate-800">Rp ${(i.harga * i.qty).toLocaleString('id-ID')}</span></div>`
-        ).join('');
-
-        const card = document.createElement('div');
-        card.id = id;
-        card.className = 'order-notif';
-        card.innerHTML = `
-          <div class="bg-white rounded-2xl shadow-2xl border-2 border-emerald-200 overflow-hidden order-notif-glow">
-            <div class="bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2.5 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-xl animate-bounce">&#127828;</span>
-                <div>
-                  <p class="text-white font-black text-xs uppercase tracking-wider">Pesanan Meja ${data.meja}</p>
-                  <p class="text-white/60 text-[9px] font-bold">${data.waktu || ''} &bull; ${data.items.length} item</p>
-                </div>
-              </div>
-              <span class="bg-white/20 text-white text-[10px] font-black px-2.5 py-1 rounded-full">BARU!</span>
-            </div>
-            <div class="px-4 py-3 space-y-1.5 max-h-[120px] overflow-y-auto">
-              ${itemList}
-            </div>
-            <div class="px-4 py-2 bg-slate-50 border-t flex justify-between items-center">
-              <div>
-                <p class="text-[8px] text-slate-400 font-bold uppercase">Total</p>
-                <p class="font-black text-orange-600 text-sm">Rp ${data.total.toLocaleString('id-ID')}</p>
-              </div>
-              <div class="flex gap-2">
-                <button onclick="acceptCustomerOrder('${id}', ${JSON.stringify(data.items).replace(/"/g, '&quot;')})" class="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-lg shadow-emerald-500/30 active:scale-95 transition-transform">
-                  &#10003; PROSES
-                </button>
-                <button onclick="dismissCustomerOrder('${id}')" class="bg-slate-100 text-slate-400 px-3 py-2 rounded-xl font-bold text-[10px] hover:bg-red-50 hover:text-red-500 transition-all active:scale-95">
-                  &#10005;
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-        panel.prepend(card);
-
-        // Auto-dismiss after 2 minutes
-        setTimeout(() => dismissCustomerOrder(id), 120000);
-
-        // Vibrate mobile
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      }
-
-      function acceptCustomerOrder(id, items) {
-        // Add items to kasir cart
-        items.forEach(item => {
-          const existing = cart.find(c => c.id === item.menuId);
-          if (existing) {
-            existing.qty += item.qty;
-          } else {
-            cart.push({ id: item.menuId, name: item.nama, price: item.harga, qty: item.qty });
-          }
-        });
-        updateUI();
-        calculateChange();
-        dismissCustomerOrder(id);
-        showToast('PESANAN PELANGGAN DITAMBAHKAN!');
-        launchConfetti();
-
-        // Open mobile cart if on mobile
-        if (window.innerWidth <= 768) {
-          setTimeout(() => { if (typeof toggleMobileCart === 'function') toggleMobileCart(); }, 500);
-        }
       }
 
       function dismissCustomerOrder(id) {

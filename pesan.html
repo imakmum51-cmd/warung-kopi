@@ -7,6 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Warkop Urban - Pesan</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icon-192.svg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -190,6 +192,7 @@
         backdrop-filter: blur(20px);
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
+        overflow-y: auto; padding: 24px 16px;
         opacity: 0; visibility: hidden;
         transition: all 0.4s ease;
       }
@@ -270,6 +273,161 @@
       .fade-up {
         animation: fadeUp 0.5s ease forwards;
         opacity: 0;
+      }
+
+      /* Ukuran & topping button (dark context - cart panel) */
+      .ukuran-btn.active,
+      .topping-btn.active {
+        background: linear-gradient(135deg, rgba(234,88,12,0.25), rgba(220,38,38,0.15)) !important;
+        border-color: rgba(234,88,12,0.6) !important;
+        box-shadow: 0 4px 15px rgba(234,88,12,0.2);
+        color: white !important;
+      }
+
+      /* Tipe pesanan & metode pembayaran button */
+      .tipe-btn.active,
+      .metode-btn.active {
+        background: linear-gradient(135deg, rgba(234,88,12,0.25), rgba(220,38,38,0.15)) !important;
+        border-color: rgba(234,88,12,0.6) !important;
+        box-shadow: 0 4px 15px rgba(234,88,12,0.2);
+      }
+
+      /* ===== Item Detail Popup (Light Theme) ===== */
+      .item-detail-overlay {
+        position: fixed; inset: 0; z-index: 180;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      .item-detail-overlay.show { opacity: 1; pointer-events: auto; }
+
+      .item-detail-panel {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 185;
+        max-height: 92vh;
+        background: #fff;
+        border-radius: 24px 24px 0 0;
+        transform: translateY(100%);
+        transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        overflow-y: auto;
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+      }
+      .item-detail-panel.show { transform: translateY(0); }
+      .item-detail-panel::-webkit-scrollbar { width: 3px; }
+      .item-detail-panel::-webkit-scrollbar-thumb { background: rgba(234,88,12,0.2); border-radius: 10px; }
+
+      /* Light theme option buttons */
+      .opt-card {
+        background: #fff;
+        border: 2px solid #f0f0f0;
+        border-radius: 16px;
+        padding: 14px 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .opt-card:active { transform: scale(0.96); }
+      .opt-card.active {
+        border-color: #ea580c;
+        background: #fff8f3;
+        box-shadow: 0 4px 15px rgba(234,88,12,0.1);
+      }
+      .opt-card.active .opt-label { color: #ea580c; font-weight: 700; }
+      .opt-card .opt-icon { font-size: 28px; margin-bottom: 4px; }
+      .opt-card .opt-label { font-size: 13px; font-weight: 600; color: #333; }
+      .opt-card .opt-price { font-size: 11px; color: #999; margin-top: 2px; }
+
+      /* Pill button (topping, suhu) */
+      .opt-pill {
+        display: inline-flex; align-items: center; gap: 4px;
+        background: #fff;
+        border: 2px solid #f0f0f0;
+        border-radius: 50px;
+        padding: 10px 18px;
+        font-size: 13px; font-weight: 600; color: #555;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .opt-pill:active { transform: scale(0.96); }
+      .opt-pill.active {
+        border-color: #ea580c;
+        background: #fff8f3;
+        color: #ea580c;
+      }
+
+      /* Addon row */
+      .addon-row {
+        display: flex; align-items: center; justify-content: space-between;
+        background: #fafafa;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 8px;
+      }
+      .addon-row .addon-info { display: flex; flex-direction: column; }
+      .addon-row .addon-name { font-size: 14px; font-weight: 600; color: #333; }
+      .addon-row .addon-price { font-size: 12px; color: #999; margin-top: 2px; }
+      .addon-row .addon-add-btn {
+        width: 34px; height: 34px;
+        border-radius: 50%; border: 2px solid #ea580c;
+        background: transparent; color: #ea580c;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; font-weight: 700; cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .addon-row .addon-add-btn.added {
+        background: #ea580c; color: white;
+      }
+      .addon-row .addon-add-btn:active { transform: scale(0.9); }
+
+      /* Bottom bar in popup */
+      .popup-bottom-bar {
+        position: sticky; bottom: 0;
+        background: #fff;
+        border-top: 1px solid #f0f0f0;
+        padding: 16px 20px;
+        display: flex; align-items: center; gap: 12px;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+      }
+      .popup-bottom-bar .price-display {
+        flex: 1;
+        font-size: 20px; font-weight: 800; color: #1a1a1a;
+      }
+      .popup-qty-control {
+        display: flex; align-items: center; gap: 8px;
+      }
+      .popup-qty-btn {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        border: 2px solid #e0e0e0;
+        background: transparent;
+        color: #555;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .popup-qty-btn:active { transform: scale(0.9); }
+      .popup-qty-btn.minus { border-color: #e0e0e0; color: #aaa; }
+      .popup-qty-btn.plus { border-color: #ea580c; background: #ea580c; color: #fff; }
+      .popup-qty-num { font-size: 16px; font-weight: 800; color: #333; min-width: 24px; text-align: center; }
+
+      .popup-add-cart-btn {
+        width: 100%;
+        padding: 16px;
+        border-radius: 16px;
+        border: none;
+        background: linear-gradient(135deg, #ea580c, #f97316);
+        color: white;
+        font-size: 16px; font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 6px 20px rgba(234,88,12,0.3);
+      }
+      .popup-add-cart-btn:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(234,88,12,0.2); }
+
+      .section-title {
+        font-size: 15px; font-weight: 700; color: #1a1a1a;
+        margin-bottom: 12px;
       }
 
       /* Hide scrollbar on category scroll */
@@ -382,6 +540,41 @@
             <span class="text-white/60 font-600">Total</span>
             <span class="text-xl font-900 gradient-text" id="cart-total">Rp 0</span>
           </div>
+
+          <!-- Tipe Pesanan -->
+          <div class="mb-4">
+            <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Tipe Pesanan</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="tipe-btn active glass-card rounded-xl py-3 px-4 flex items-center justify-center gap-2 border border-white/5 transition-all"
+                      data-tipe="Dine In" onclick="pilihTipe('Dine In')">
+                <span class="text-lg">🍽️</span>
+                <span class="text-white font-600 text-sm">Dine In</span>
+              </button>
+              <button class="tipe-btn glass-card rounded-xl py-3 px-4 flex items-center justify-center gap-2 border border-white/5 transition-all"
+                      data-tipe="Take Away" onclick="pilihTipe('Take Away')">
+                <span class="text-lg">📦</span>
+                <span class="text-white font-600 text-sm">Take Away</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Metode Pembayaran -->
+          <div class="mb-4">
+            <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Metode Pembayaran</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="metode-btn active glass-card rounded-xl py-3 px-4 flex items-center justify-center gap-2 border border-white/5 transition-all"
+                      data-metode="Tunai" onclick="pilihMetode('Tunai')">
+                <span class="text-lg">💵</span>
+                <span class="text-white font-600 text-sm">Tunai</span>
+              </button>
+              <button class="metode-btn glass-card rounded-xl py-3 px-4 flex items-center justify-center gap-2 border border-white/5 transition-all"
+                      data-metode="QRIS" onclick="pilihMetode('QRIS')">
+                <span class="text-lg">📱</span>
+                <span class="text-white font-600 text-sm">QRIS</span>
+              </button>
+            </div>
+          </div>
+
           <button id="btn-submit" class="btn-submit w-full py-4 rounded-2xl text-white font-700 text-base flex items-center justify-center gap-2"
                   onclick="submitOrder()">
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -403,17 +596,154 @@
           </svg>
         </div>
       </div>
-      <h2 class="text-white text-2xl font-800 mb-2">Pesanan Terkirim!</h2>
-      <p class="text-white/50 text-sm text-center max-w-[260px] leading-relaxed">
+      <h2 class="text-white text-2xl font-800 mb-2">Pesanan Berhasil!</h2>
+      <p class="text-white/50 text-sm text-center max-w-[260px] leading-relaxed" id="success-desc">
         Pesanan dikirim ke kasir, silakan tunggu. Kami akan segera menyiapkan pesanan Anda.
       </p>
-      <div class="mt-6 glass-card rounded-2xl px-6 py-3 flex items-center gap-3">
-        <span class="text-white/40 text-sm">Meja</span>
-        <span class="text-xl font-900 gradient-text" id="success-meja">-</span>
+
+      <!-- QRIS QR Code (tampil hanya saat metode QRIS) -->
+      <div id="success-qris" class="hidden mt-5 flex flex-col items-center">
+        <div class="bg-white p-3 rounded-3xl shadow-2xl shadow-black/40">
+          <img src="/qris.png.png" class="w-52 h-52 object-contain" alt="QRIS" />
+        </div>
+        <p class="text-orange-400 text-xs font-700 mt-3 uppercase tracking-wider">Scan QRIS untuk bayar</p>
       </div>
-      <button class="mt-8 text-white/40 text-sm font-600 underline underline-offset-4" onclick="resetPage()">
+
+      <div class="mt-5 glass-card rounded-2xl px-6 py-4 flex flex-col gap-3 min-w-[220px]">
+        <div class="flex items-center justify-between">
+          <span class="text-white/40 text-sm">Meja</span>
+          <span class="text-lg font-900 gradient-text" id="success-meja">-</span>
+        </div>
+        <div class="border-t border-white/10"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-white/40 text-sm">Tipe</span>
+          <span class="text-white font-700 text-sm" id="success-tipe">🍽️ Dine In</span>
+        </div>
+        <div class="border-t border-white/10"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-white/40 text-sm">Pembayaran</span>
+          <span class="text-white font-700 text-sm" id="success-metode">Tunai</span>
+        </div>
+        <div class="border-t border-white/10"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-white/40 text-sm">Total</span>
+          <span class="text-lg font-900 gradient-text" id="success-total">Rp 0</span>
+        </div>
+      </div>
+      <button class="mt-6 text-white/40 text-sm font-600 underline underline-offset-4" onclick="resetPage()">
         Pesan lagi
       </button>
+    </div>
+
+    <!-- Order Ready Popup -->
+    <div class="fixed inset-0 z-[250] flex items-center justify-center p-6 opacity-0 pointer-events-none" id="order-ready-overlay"
+         style="transition:opacity 0.4s ease; background:rgba(5,5,5,0.92); backdrop-filter:blur(20px);">
+      <div class="flex flex-col items-center text-center">
+        <div class="relative mb-6">
+          <div class="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center"
+               style="animation: checkPop 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards; transform:scale(0);" id="ready-icon">
+            <span class="text-5xl">🎉</span>
+          </div>
+          <div class="absolute inset-0 w-24 h-24 rounded-full border-2 border-emerald-400/40" style="animation: pulseOut 1.2s ease-out 0.3s infinite;"></div>
+        </div>
+        <h2 class="text-white text-2xl font-800 mb-2">Pesanan Siap!</h2>
+        <p class="text-white/50 text-sm text-center max-w-[280px] leading-relaxed mb-6">
+          Pesanan Anda sudah selesai disiapkan. Silakan ambil di kasir atau tunggu diantar ke meja Anda.
+        </p>
+        <div class="glass-card rounded-2xl px-6 py-3 flex items-center gap-3 mb-6">
+          <span class="text-white/40 text-sm">Meja</span>
+          <span class="text-xl font-900 gradient-text" id="ready-meja">-</span>
+        </div>
+        <button onclick="closeOrderReady()" class="px-8 py-3 rounded-2xl text-white font-700 text-sm"
+                style="background:linear-gradient(135deg,#059669,#10b981); box-shadow:0 8px 25px rgba(5,150,105,0.35);">
+          OK, Terima Kasih!
+        </button>
+        <button class="mt-4 text-white/40 text-sm font-600 underline underline-offset-4" onclick="closeOrderReady(); resetPage();">
+          Pesan lagi
+        </button>
+      </div>
+    </div>
+
+    <!-- Item Detail Popup (Light Theme) -->
+    <div class="item-detail-overlay" id="item-popup" onclick="closeItemPopup()"></div>
+    <div class="item-detail-panel" id="item-popup-panel" onclick="event.stopPropagation()">
+      <!-- Handle bar -->
+      <div style="padding: 12px 0 0; text-align: center;">
+        <div style="width: 40px; height: 4px; background: #ddd; border-radius: 4px; margin: 0 auto;"></div>
+      </div>
+
+      <!-- Header with emoji & name -->
+      <div style="padding: 16px 20px 0; display: flex; align-items: center; gap: 14px;">
+        <div id="popup-emoji" style="font-size: 42px; line-height: 1;">&#9749;</div>
+        <div style="flex: 1;">
+          <h3 id="popup-nama" style="font-size: 18px; font-weight: 800; color: #1a1a1a; margin: 0;">-</h3>
+          <p id="popup-harga-base" style="font-size: 14px; font-weight: 600; color: #999; margin: 4px 0 0;">Rp 0</p>
+        </div>
+      </div>
+
+      <div style="padding: 20px 20px 0;">
+
+        <!-- CupSize (minuman/kopi) -->
+        <div id="popup-ukuran-wrap" style="margin-bottom: 24px;">
+          <div class="section-title">CupSize</div>
+          <div id="popup-ukuran-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Temperature (minuman/kopi) -->
+        <div id="popup-suhu-wrap" style="margin-bottom: 24px;">
+          <div class="section-title">Temperature</div>
+          <div id="popup-suhu-grid" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Level Pedas (makanan) -->
+        <div id="popup-level-wrap" style="margin-bottom: 24px; display: none;">
+          <div class="section-title">Level Pedas</div>
+          <div id="popup-level-grid" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Topping -->
+        <div id="popup-topping-wrap" style="margin-bottom: 24px;">
+          <div class="section-title">Topping</div>
+          <div id="popup-topping-grid" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Add On -->
+        <div id="popup-addon-wrap" style="margin-bottom: 24px;">
+          <div class="section-title">Add On</div>
+          <div id="popup-addon-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Catatan -->
+        <div style="margin-bottom: 20px;">
+          <div class="section-title">Catatan</div>
+          <input type="text" id="popup-catatan" placeholder="Misal: kurang gula, tanpa es..."
+                 style="width: 100%; background: #f8f8f8; border: 2px solid #f0f0f0; border-radius: 14px; padding: 14px 16px; font-size: 14px; font-weight: 500; color: #333; outline: none;"
+                 onfocus="this.style.borderColor='#ea580c'" onblur="this.style.borderColor='#f0f0f0'" />
+        </div>
+      </div>
+
+      <!-- Bottom bar: price + qty + add to cart -->
+      <div class="popup-bottom-bar" style="flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div class="price-display" id="popup-total-price">Rp 0</div>
+          <div class="popup-qty-control">
+            <button class="popup-qty-btn minus" onclick="popupChangeQty(-1)">&#8722;</button>
+            <span class="popup-qty-num" id="popup-qty">1</span>
+            <button class="popup-qty-btn plus" onclick="popupChangeQty(1)">+</button>
+          </div>
+        </div>
+        <button class="popup-add-cart-btn" onclick="confirmAddToCart()">Add to Cart</button>
+      </div>
     </div>
 
     <!-- No Meja Error -->
@@ -434,8 +764,54 @@
       let currentCategory = "semua";
       let mejaNumber = null;
       let isSubmitting = false;
+      let metodePembayaran = "Tunai";
+      let tipePesanan = "Dine In";
 
       const socket = io();
+
+      // ============================
+      // Service Worker & Push Notification
+      // ============================
+      async function setupPushNotification() {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+        try {
+          const reg = await navigator.serviceWorker.register("/sw.js");
+          console.log("Service Worker registered");
+
+          // Minta izin notifikasi
+          const permission = await Notification.requestPermission();
+          if (permission !== "granted") return;
+
+          // Ambil VAPID public key dari server
+          const vapidRes = await fetch("/api/vapid-public-key");
+          const { publicKey } = await vapidRes.json();
+
+          // Subscribe push
+          const subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+          });
+
+          // Kirim subscription ke server dengan nomor meja
+          await fetch("/api/push-subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ meja: mejaNumber, subscription }),
+          });
+          console.log("Push subscription berhasil untuk meja", mejaNumber);
+        } catch (e) {
+          console.log("Push setup gagal:", e);
+        }
+      }
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const raw = atob(base64);
+        const arr = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+        return arr;
+      }
 
       const CATEGORY_EMOJI = {
         makanan: "🍜",
@@ -462,6 +838,11 @@
         document.getElementById("success-meja").textContent = mejaNumber;
 
         loadMenu();
+        // Register push notification setelah interaksi pertama
+        document.addEventListener("click", function firstClick() {
+          setupPushNotification();
+          document.removeEventListener("click", firstClick);
+        }, { once: true });
       })();
 
       // ============================
@@ -469,8 +850,11 @@
       // ============================
       async function loadMenu() {
         try {
-          const res = await fetch("/api/menu");
-          menuData = await res.json();
+          const [menuRes] = await Promise.all([
+            fetch("/api/menu"),
+            loadMenuOpsi(),
+          ]);
+          menuData = await menuRes.json();
           document.getElementById("loading-state").classList.add("hidden");
           renderMenu();
         } catch (e) {
@@ -502,34 +886,28 @@
 
         grid.innerHTML = filtered.map((item, i) => {
           const outOfStock = item.stok <= 0 || !item.tersedia;
-          const inCart = cart[item.id];
           const emoji = CATEGORY_EMOJI[item.kategori] || "🍽️";
+          // Hitung total qty per item id dari semua varian
+          const totalQty = Object.values(cart).filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
 
           return `
             <div class="menu-item glass-card rounded-2xl p-4 relative fade-up ${outOfStock ? 'item-disabled' : ''}"
                  style="animation-delay: ${i * 0.05}s"
                  ${!outOfStock ? `onclick="addToCart(${item.id})"` : ""}>
               ${outOfStock ? '<div class="habis-badge">Habis</div>' : ''}
+              ${totalQty > 0 ? `<div class="absolute top-2 right-2 w-6 h-6 rounded-full bg-orange-600 flex items-center justify-center text-white text-xs font-800">${totalQty}</div>` : ''}
               <div class="text-3xl mb-2">${emoji}</div>
               <h3 class="text-white font-700 text-sm leading-tight mb-1 line-clamp-2">${item.nama}</h3>
               <p class="text-xs text-white/30 capitalize mb-2">${item.kategori}</p>
               <div class="flex items-end justify-between">
                 <span class="gradient-text font-800 text-sm">Rp ${item.harga.toLocaleString("id-ID")}</span>
-                ${!outOfStock && inCart ? `
-                  <div class="flex items-center gap-1" onclick="event.stopPropagation()">
-                    <button class="qty-btn w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-sm font-700"
-                            onclick="event.stopPropagation(); changeQty(${item.id}, -1)">-</button>
-                    <span class="text-white font-700 text-sm w-6 text-center">${inCart.qty}</span>
-                    <button class="qty-btn w-7 h-7 rounded-full bg-orange-600 text-white flex items-center justify-center text-sm font-700"
-                            onclick="event.stopPropagation(); changeQty(${item.id}, 1)">+</button>
-                  </div>
-                ` : (!outOfStock ? `
+                ${!outOfStock ? `
                   <div class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
                     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.5)" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                     </svg>
                   </div>
-                ` : '')}
+                ` : ''}
               </div>
               ${!outOfStock && item.stok <= 5 ? `<p class="text-[10px] text-orange-400/70 mt-1">Sisa ${item.stok}</p>` : ''}
             </div>
@@ -549,38 +927,274 @@
       }
 
       // ============================
+      // Menu Options (loaded from API)
+      // ============================
+      let menuOpsi = {}; // { ukuran: [...], suhu: [...], topping: [...], addon: [...], level: [...] }
+
+      async function loadMenuOpsi() {
+        try {
+          const res = await fetch("/api/menu-opsi");
+          menuOpsi = await res.json();
+        } catch (e) {
+          console.log("Gagal load menu opsi:", e);
+        }
+      }
+
+      // ============================
       // Cart Logic
       // ============================
+      let popupItemId = null;
+      let popupUkuran = null;
+      let popupUkuranHarga = 0;
+      let popupSuhu = null;
+      let popupTopping = null;
+      let popupToppingHarga = 0;
+      let popupAddons = [];  // [{nama, harga}]
+      let popupLevel = null;
+      let popupQty = 1;
+
+      function getOpsiForKategori(tipe, kategori) {
+        if (!menuOpsi[tipe]) return [];
+        return menuOpsi[tipe].filter(o => {
+          if (!o.kategori_menu) return true;
+          return o.kategori_menu.split(",").map(s => s.trim()).includes(kategori);
+        });
+      }
+
       function addToCart(id) {
         const item = menuData.find(m => m.id === id);
         if (!item || item.stok <= 0) return;
 
-        if (cart[id]) {
-          if (cart[id].qty >= item.stok) return;
-          cart[id].qty++;
+        // Reset popup state
+        popupItemId = id;
+        popupQty = 1;
+        popupAddons = [];
+        popupToppingHarga = 0;
+        popupUkuranHarga = 0;
+
+        const isDrink = ["kopi", "minuman"].includes(item.kategori);
+        const isFood = ["makanan", "snack"].includes(item.kategori);
+
+        document.getElementById("popup-emoji").textContent = CATEGORY_EMOJI[item.kategori] || "🍽️";
+        document.getElementById("popup-nama").textContent = item.nama;
+        document.getElementById("popup-harga-base").textContent = `Rp ${item.harga.toLocaleString("id-ID")}`;
+        document.getElementById("popup-catatan").value = "";
+        document.getElementById("popup-qty").textContent = "1";
+
+        // === Ukuran (CupSize) ===
+        const ukuranList = getOpsiForKategori("ukuran", item.kategori);
+        const ukuranWrap = document.getElementById("popup-ukuran-wrap");
+        if (isDrink && ukuranList.length > 0) {
+          ukuranWrap.style.display = "";
+          popupUkuran = ukuranList[0].nama;
+          popupUkuranHarga = ukuranList[0].harga;
+          const grid = document.getElementById("popup-ukuran-grid");
+          grid.style.gridTemplateColumns = `repeat(${Math.min(ukuranList.length, 3)}, 1fr)`;
+          grid.innerHTML = ukuranList.map((o, i) => {
+            const sizes = ["28px", "36px", "44px"];
+            return `
+              <div class="opt-card ${i === 0 ? 'active' : ''}" data-ukuran="${o.nama}" data-harga="${o.harga}" onclick="pilihUkuran(this)">
+                <div style="font-size: ${sizes[i] || '36px'}; margin-bottom: 4px;">&#9749;</div>
+                <div class="opt-label">${o.nama}</div>
+                ${o.harga > 0 ? `<div class="opt-price">+Rp ${o.harga.toLocaleString("id-ID")}</div>` : '<div class="opt-price">-</div>'}
+              </div>
+            `;
+          }).join("");
         } else {
-          cart[id] = { id: item.id, nama: item.nama, harga: item.harga, qty: 1 };
+          ukuranWrap.style.display = "none";
+          popupUkuran = null;
+          popupUkuranHarga = 0;
         }
 
+        // === Suhu (Temperature) ===
+        const suhuList = getOpsiForKategori("suhu", item.kategori);
+        const suhuWrap = document.getElementById("popup-suhu-wrap");
+        if (isDrink && suhuList.length > 0) {
+          suhuWrap.style.display = "";
+          popupSuhu = suhuList[0].nama;
+          document.getElementById("popup-suhu-grid").innerHTML = suhuList.map((o, i) => `
+            <button class="opt-pill ${i === 0 ? 'active' : ''}" data-suhu="${o.nama}" onclick="pilihSuhu(this)">
+              ${o.icon ? o.icon + ' ' : ''}${o.nama}
+            </button>
+          `).join("");
+        } else {
+          suhuWrap.style.display = "none";
+          popupSuhu = null;
+        }
+
+        // === Level Pedas (makanan) ===
+        const levelList = getOpsiForKategori("level", item.kategori);
+        const levelWrap = document.getElementById("popup-level-wrap");
+        if (isFood && levelList.length > 0) {
+          levelWrap.style.display = "";
+          popupLevel = levelList[0].nama;
+          document.getElementById("popup-level-grid").innerHTML = levelList.map((o, i) => `
+            <button class="opt-pill ${i === 0 ? 'active' : ''}" data-level="${o.nama}" onclick="pilihLevel(this)">
+              ${o.icon ? o.icon + ' ' : ''}${o.nama}
+            </button>
+          `).join("");
+        } else {
+          levelWrap.style.display = "none";
+          popupLevel = null;
+        }
+
+        // === Topping ===
+        const toppingList = getOpsiForKategori("topping", item.kategori);
+        const toppingWrap = document.getElementById("popup-topping-wrap");
+        if (toppingList.length > 0) {
+          toppingWrap.style.display = "";
+          popupTopping = toppingList[0].nama; // "No Topping" as default
+          popupToppingHarga = toppingList[0].harga;
+          document.getElementById("popup-topping-grid").innerHTML = toppingList.map((o, i) => `
+            <button class="opt-pill ${i === 0 ? 'active' : ''}" data-topping="${o.nama}" data-harga="${o.harga}" onclick="pilihTopping(this)">
+              ${o.nama}${o.harga > 0 ? ' <span style="color:#ea580c;font-size:11px;">+Rp ' + o.harga.toLocaleString("id-ID") + '</span>' : ''}
+            </button>
+          `).join("");
+        } else {
+          toppingWrap.style.display = "none";
+          popupTopping = null;
+          popupToppingHarga = 0;
+        }
+
+        // === Add-On ===
+        const addonList = getOpsiForKategori("addon", item.kategori);
+        const addonWrap = document.getElementById("popup-addon-wrap");
+        if (addonList.length > 0) {
+          addonWrap.style.display = "";
+          popupAddons = [];
+          document.getElementById("popup-addon-list").innerHTML = addonList.map(o => `
+            <div class="addon-row">
+              <div class="addon-info">
+                <span class="addon-name">${o.nama}</span>
+                <span class="addon-price">Rp ${o.harga.toLocaleString("id-ID")}</span>
+              </div>
+              <button class="addon-add-btn" data-addon="${o.nama}" data-harga="${o.harga}" onclick="toggleAddon(this)">+</button>
+            </div>
+          `).join("");
+        } else {
+          addonWrap.style.display = "none";
+          popupAddons = [];
+        }
+
+        updatePopupPrice();
+
+        // Show popup
+        document.getElementById("item-popup").classList.add("show");
+        document.getElementById("item-popup-panel").classList.add("show");
+      }
+
+      function closeItemPopup() {
+        document.getElementById("item-popup-panel").classList.remove("show");
+        setTimeout(() => { document.getElementById("item-popup").classList.remove("show"); }, 300);
+      }
+
+      function pilihUkuran(el) {
+        popupUkuran = el.dataset.ukuran;
+        popupUkuranHarga = parseInt(el.dataset.harga) || 0;
+        el.parentElement.querySelectorAll(".opt-card").forEach(c => c.classList.remove("active"));
+        el.classList.add("active");
+        updatePopupPrice();
+      }
+
+      function pilihSuhu(el) {
+        popupSuhu = el.dataset.suhu;
+        el.parentElement.querySelectorAll(".opt-pill").forEach(c => c.classList.remove("active"));
+        el.classList.add("active");
+      }
+
+      function pilihLevel(el) {
+        popupLevel = el.dataset.level;
+        el.parentElement.querySelectorAll(".opt-pill").forEach(c => c.classList.remove("active"));
+        el.classList.add("active");
+      }
+
+      function pilihTopping(el) {
+        popupTopping = el.dataset.topping;
+        popupToppingHarga = parseInt(el.dataset.harga) || 0;
+        el.parentElement.querySelectorAll(".opt-pill").forEach(c => c.classList.remove("active"));
+        el.classList.add("active");
+        updatePopupPrice();
+      }
+
+      function toggleAddon(btn) {
+        const nama = btn.dataset.addon;
+        const harga = parseInt(btn.dataset.harga) || 0;
+        const idx = popupAddons.findIndex(a => a.nama === nama);
+        if (idx >= 0) {
+          popupAddons.splice(idx, 1);
+          btn.classList.remove("added");
+          btn.textContent = "+";
+        } else {
+          popupAddons.push({ nama, harga });
+          btn.classList.add("added");
+          btn.textContent = "✓";
+        }
+        updatePopupPrice();
+      }
+
+      function popupChangeQty(delta) {
+        const item = menuData.find(m => m.id === popupItemId);
+        if (!item) return;
+        const newQty = popupQty + delta;
+        if (newQty < 1 || newQty > item.stok) return;
+        popupQty = newQty;
+        document.getElementById("popup-qty").textContent = popupQty;
+        updatePopupPrice();
+      }
+
+      function calcPopupUnitPrice() {
+        const item = menuData.find(m => m.id === popupItemId);
+        if (!item) return 0;
+        let price = item.harga + popupUkuranHarga + popupToppingHarga;
+        popupAddons.forEach(a => price += a.harga);
+        return price;
+      }
+
+      function updatePopupPrice() {
+        const unit = calcPopupUnitPrice();
+        const total = unit * popupQty;
+        document.getElementById("popup-total-price").textContent = `Rp ${total.toLocaleString("id-ID")}`;
+      }
+
+      function confirmAddToCart() {
+        const item = menuData.find(m => m.id === popupItemId);
+        if (!item) return;
+        const catatan = document.getElementById("popup-catatan").value.trim();
+        const unitPrice = calcPopupUnitPrice();
+
+        // Buat key unik
+        const addonKey = popupAddons.map(a => a.nama).sort().join(",");
+        const key = `${item.id}_${popupUkuran || ''}_${popupSuhu || ''}_${popupTopping || ''}_${addonKey}_${popupLevel || ''}_${catatan}`;
+
+        if (cart[key]) {
+          const maxQty = item.stok - Object.values(cart).filter(c => c.id === item.id && c !== cart[key]).reduce((s, c) => s + c.qty, 0);
+          if (cart[key].qty + popupQty > maxQty) { closeItemPopup(); return; }
+          cart[key].qty += popupQty;
+        } else {
+          cart[key] = {
+            id: item.id, nama: item.nama, harga: unitPrice, qty: popupQty,
+            ukuran: popupUkuran,
+            suhu: popupSuhu,
+            topping: (popupTopping && popupTopping !== "No Topping") ? popupTopping : null,
+            toppingHarga: popupToppingHarga,
+            addon: popupAddons.length > 0 ? [...popupAddons] : null,
+            level: popupLevel,
+            catatan: catatan || null,
+          };
+        }
+        closeItemPopup();
         bounceFab();
         updateCartUI();
         renderMenu();
       }
 
-      function changeQty(id, delta) {
-        if (!cart[id]) return;
-
-        const item = menuData.find(m => m.id === id);
-        const newQty = cart[id].qty + delta;
-
-        if (newQty <= 0) {
-          delete cart[id];
-        } else if (item && newQty <= item.stok) {
-          cart[id].qty = newQty;
-        } else {
-          return;
-        }
-
+      function changeQty(key, delta) {
+        if (!cart[key]) return;
+        const item = menuData.find(m => m.id === cart[key].id);
+        const newQty = cart[key].qty + delta;
+        if (newQty <= 0) { delete cart[key]; }
+        else if (item && newQty <= item.stok) { cart[key].qty = newQty; }
+        else { return; }
         updateCartUI();
         renderMenu();
       }
@@ -631,21 +1245,30 @@
           cartEmpty.classList.add("hidden");
           cartFooter.classList.remove("hidden");
 
-          cartItems.innerHTML = items.map(item => {
+          cartItems.innerHTML = Object.entries(cart).map(([key, item]) => {
             const emoji = CATEGORY_EMOJI[menuData.find(m => m.id === item.id)?.kategori] || "🍽️";
+            const details = [];
+            if (item.ukuran) details.push(item.ukuran);
+            if (item.suhu) details.push(item.suhu);
+            if (item.topping) details.push(item.topping);
+            if (item.addon && item.addon.length) details.push(item.addon.map(a => a.nama).join(", "));
+            if (item.level) details.push(item.level);
+            if (item.catatan) details.push(item.catatan);
+            const detailText = details.length ? details.join(" · ") : "";
             return `
               <div class="glass-card rounded-xl p-3 flex items-center gap-3">
                 <div class="text-2xl">${emoji}</div>
                 <div class="flex-1 min-w-0">
                   <p class="text-white font-600 text-sm truncate">${item.nama}</p>
-                  <p class="text-white/40 text-xs">Rp ${item.harga.toLocaleString("id-ID")}</p>
+                  ${detailText ? `<p class="text-orange-400/70 text-[10px] font-600 truncate">${detailText}</p>` : ''}
+                  <p class="text-white/40 text-xs">Rp ${item.harga.toLocaleString("id-ID")}/pcs</p>
                 </div>
                 <div class="flex items-center gap-2">
                   <button class="qty-btn w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-sm font-700"
-                          onclick="changeQty(${item.id}, -1)">-</button>
+                          onclick="changeQty('${key}', -1)">-</button>
                   <span class="text-white font-700 text-sm w-5 text-center">${item.qty}</span>
                   <button class="qty-btn w-7 h-7 rounded-full bg-orange-600 text-white flex items-center justify-center text-sm font-700"
-                          onclick="changeQty(${item.id}, 1)">+</button>
+                          onclick="changeQty('${key}', 1)">+</button>
                 </div>
                 <span class="text-white font-700 text-sm ml-1 min-w-[60px] text-right">
                   Rp ${(item.harga * item.qty).toLocaleString("id-ID")}
@@ -656,6 +1279,26 @@
 
           cartTotal.textContent = `Rp ${total.toLocaleString("id-ID")}`;
         }
+      }
+
+      // ============================
+      // Tipe Pesanan
+      // ============================
+      function pilihTipe(tipe) {
+        tipePesanan = tipe;
+        document.querySelectorAll(".tipe-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.tipe === tipe);
+        });
+      }
+
+      // ============================
+      // Metode Pembayaran
+      // ============================
+      function pilihMetode(metode) {
+        metodePembayaran = metode;
+        document.querySelectorAll(".metode-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.metode === metode);
+        });
       }
 
       // ============================
@@ -693,17 +1336,23 @@
         btn.disabled = true;
         btn.innerHTML = '<div class="spinner"></div> Mengirim...';
 
-        const items = Object.values(cart).map(item => ({
-          menuId: item.id,
-          nama: item.nama,
-          qty: item.qty,
-          harga: item.harga,
-        }));
+        const items = Object.values(cart).map(item => {
+          const obj = { menuId: item.id, nama: item.nama, qty: item.qty, harga: item.harga };
+          if (item.ukuran) obj.ukuran = item.ukuran;
+          if (item.suhu) obj.suhu = item.suhu;
+          if (item.topping) obj.topping = item.topping;
+          if (item.addon && item.addon.length) obj.addon = item.addon;
+          if (item.level) obj.level = item.level;
+          if (item.catatan) obj.catatan = item.catatan;
+          return obj;
+        });
 
         const order = {
           meja: mejaNumber,
           items: items,
           total: getCartTotal(),
+          metode: metodePembayaran,
+          tipe: tipePesanan,
         };
 
         socket.emit("customer-order", order);
@@ -712,6 +1361,19 @@
         setTimeout(() => {
           toggleCart();
           setTimeout(() => {
+            document.getElementById("success-tipe").textContent = tipePesanan === "Take Away" ? "📦 Take Away" : "🍽️ Dine In";
+            document.getElementById("success-metode").textContent = metodePembayaran === "QRIS" ? "📱 QRIS" : "💵 Tunai";
+            document.getElementById("success-total").textContent = `Rp ${getCartTotal().toLocaleString("id-ID")}`;
+            const qrisSection = document.getElementById("success-qris");
+            if (metodePembayaran === "QRIS") {
+              qrisSection.classList.remove("hidden");
+              qrisSection.classList.add("flex");
+              document.getElementById("success-desc").textContent = "Silakan scan QRIS di bawah untuk menyelesaikan pembayaran.";
+            } else {
+              qrisSection.classList.add("hidden");
+              qrisSection.classList.remove("flex");
+              document.getElementById("success-desc").textContent = "Pesanan dikirim ke kasir, silakan tunggu. Kami akan segera menyiapkan pesanan Anda.";
+            }
             document.getElementById("success-overlay").classList.add("show");
           }, 300);
         }, 800);
@@ -723,6 +1385,14 @@
       function resetPage() {
         cart = {};
         isSubmitting = false;
+        metodePembayaran = "Tunai";
+        tipePesanan = "Dine In";
+        document.querySelectorAll(".metode-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.metode === "Tunai");
+        });
+        document.querySelectorAll(".tipe-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.tipe === "Dine In");
+        });
         const btn = document.getElementById("btn-submit");
         btn.disabled = false;
         btn.innerHTML = `
@@ -759,6 +1429,90 @@
           renderMenu();
         }
       });
+
+      // ============================
+      // Notifikasi Pesanan Selesai
+      // ============================
+      socket.on("order-ready", (data) => {
+        console.log("order-ready received:", data, "mejaNumber:", mejaNumber);
+        if (!data || parseInt(data.meja) !== mejaNumber) return;
+        showOrderReady();
+      });
+
+      // Notifikasi suara: bell chime yang nyaring
+      function playOrderReadySound() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          // 3x bell chime
+          const chimes = [
+            { freq: 830, time: 0 },
+            { freq: 1046, time: 0.25 },
+            { freq: 1318, time: 0.5 },
+            { freq: 1046, time: 0.75 },
+            { freq: 1318, time: 1.0 },
+            { freq: 1568, time: 1.25 },
+          ];
+          chimes.forEach(c => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.value = c.freq;
+            gain.gain.setValueAtTime(0.5, ctx.currentTime + c.time);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + c.time + 0.4);
+            osc.start(ctx.currentTime + c.time);
+            osc.stop(ctx.currentTime + c.time + 0.4);
+          });
+          // Tambah ding terakhir yang lebih panjang
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.type = "sine";
+          osc2.frequency.value = 1568;
+          gain2.gain.setValueAtTime(0.4, ctx.currentTime + 1.6);
+          gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2.8);
+          osc2.start(ctx.currentTime + 1.6);
+          osc2.stop(ctx.currentTime + 2.8);
+        } catch (e) {}
+      }
+
+      function showOrderReady() {
+        document.getElementById("ready-meja").textContent = mejaNumber;
+        const overlay = document.getElementById("order-ready-overlay");
+        const icon = document.getElementById("ready-icon");
+        overlay.style.opacity = "1";
+        overlay.style.pointerEvents = "auto";
+        icon.style.transform = "scale(1)";
+        // Vibrate
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+        // Suara notifikasi
+        playOrderReadySound();
+
+        // Browser Push Notification (muncul meskipun di luar web)
+        if ("Notification" in window && Notification.permission === "granted") {
+          try {
+            const notif = new Notification("🎉 Pesanan Siap! — Warkop Urban", {
+              body: `Pesanan Meja ${mejaNumber} sudah selesai disiapkan. Silakan ambil di kasir!`,
+              icon: "/qris.png.png",
+              tag: "order-ready-" + mejaNumber,
+              requireInteraction: true,
+              vibrate: [200, 100, 200],
+            });
+            notif.onclick = function () {
+              window.focus();
+              notif.close();
+            };
+          } catch (e) {}
+        }
+      }
+
+      function closeOrderReady() {
+        const overlay = document.getElementById("order-ready-overlay");
+        overlay.style.opacity = "0";
+        overlay.style.pointerEvents = "none";
+      }
     </script>
   </body>
 </html>

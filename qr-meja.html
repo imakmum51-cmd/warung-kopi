@@ -142,7 +142,17 @@
 
       // Show which URL mode
       const modeLabel = document.getElementById('url-mode');
-      if (modeLabel) modeLabel.textContent = baseURL.includes('loca.lt') || baseURL.includes('localtunnel') ? '🌐 Internet (publik)' : '📶 WiFi lokal';
+      if (modeLabel) {
+        if (baseURL.includes('trycloudflare.com') || baseURL.includes('loca.lt') || baseURL.includes('localtunnel') || baseURL.includes('ngrok')) {
+          modeLabel.textContent = '🌐 Internet (publik)';
+          modeLabel.style.background = '#ecfdf5';
+          modeLabel.style.color = '#059669';
+        } else {
+          modeLabel.textContent = '📶 WiFi lokal';
+          modeLabel.style.background = '#fef3c7';
+          modeLabel.style.color = '#d97706';
+        }
+      }
 
       for (let i = 1; i <= count; i++) {
         const url = `${baseURL}/pesan?meja=${i}`;

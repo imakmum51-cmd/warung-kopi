@@ -1,0 +1,8 @@
+node_modules
+.claude
+.git
+warkop.db
+warkop.db-wal
+warkop.db-shm
+www
+*.md
