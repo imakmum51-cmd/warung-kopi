@@ -130,6 +130,77 @@ try {
 try {
   db.exec("ALTER TABLE pelanggan ADD COLUMN password TEXT DEFAULT ''");
 } catch (e) {}
+// Migrasi: tambah kolom alamat di pelanggan
+try {
+  db.exec("ALTER TABLE pelanggan ADD COLUMN alamat TEXT DEFAULT ''");
+} catch (e) {}
+
+// Tabel pesanan online (tracking pesanan dari app)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS pesanan_online (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pelanggan_id INTEGER NOT NULL,
+    nama TEXT NOT NULL,
+    alamat TEXT DEFAULT '',
+    telp TEXT DEFAULT '',
+    items TEXT NOT NULL,
+    total INTEGER NOT NULL,
+    diskon INTEGER DEFAULT 0,
+    promo_kode TEXT DEFAULT '',
+    metode TEXT NOT NULL,
+    tipe TEXT DEFAULT 'Dine In',
+    catatan TEXT DEFAULT '',
+    status TEXT DEFAULT 'menunggu',
+    kode_pesanan TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+// Tabel favorit menu pelanggan
+db.exec(`
+  CREATE TABLE IF NOT EXISTS favorit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pelanggan_id INTEGER NOT NULL,
+    menu_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(pelanggan_id, menu_id)
+  );
+`);
+
+// Tabel promo/voucher
+db.exec(`
+  CREATE TABLE IF NOT EXISTS promo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kode TEXT NOT NULL UNIQUE,
+    nama TEXT NOT NULL,
+    deskripsi TEXT DEFAULT '',
+    tipe TEXT NOT NULL,
+    nilai INTEGER NOT NULL,
+    min_belanja INTEGER DEFAULT 0,
+    max_diskon INTEGER DEFAULT 0,
+    kuota INTEGER DEFAULT -1,
+    terpakai INTEGER DEFAULT 0,
+    mulai TEXT NOT NULL,
+    selesai TEXT NOT NULL,
+    aktif INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+// Seed promo contoh jika kosong
+const promoCount = db.prepare("SELECT COUNT(*) as c FROM promo").get();
+if (promoCount.c === 0) {
+  const seedPromo = db.prepare(
+    "INSERT INTO promo (kode, nama, deskripsi, tipe, nilai, min_belanja, max_diskon, kuota, mulai, selesai) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  );
+  const seedP = db.transaction(() => {
+    seedPromo.run("WELCOME20", "Diskon 20% Pelanggan Baru", "Diskon 20% untuk pembelian pertama", "persen", 20, 20000, 15000, -1, "2025-01-01", "2027-12-31");
+    seedPromo.run("HEMAT10K", "Potongan Rp 10.000", "Potongan langsung Rp 10.000 min. belanja Rp 50.000", "nominal", 10000, 50000, 0, 100, "2025-01-01", "2027-12-31");
+    seedPromo.run("KOPI50", "Diskon 50% Menu Kopi", "Diskon 50% untuk semua menu kopi, max Rp 20.000", "persen", 50, 15000, 20000, 50, "2025-01-01", "2027-12-31");
+  });
+  seedP();
+}
 
 // Tabel shift karyawan
 db.exec(`
@@ -263,8 +334,52 @@ const updatePelangganInfo = db.prepare(
   "UPDATE pelanggan SET nama = ?, telp = ? WHERE id = ?",
 );
 
+// Pesanan Online
+const insertPesananOnline = db.prepare(
+  "INSERT INTO pesanan_online (pelanggan_id, nama, alamat, telp, items, total, diskon, promo_kode, metode, tipe, catatan, status, kode_pesanan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+);
+const getPesananByPelanggan = db.prepare(
+  "SELECT * FROM pesanan_online WHERE pelanggan_id = ? ORDER BY id DESC LIMIT 50"
+);
+const getPesananById = db.prepare("SELECT * FROM pesanan_online WHERE id = ?");
+const updatePesananStatus = db.prepare(
+  "UPDATE pesanan_online SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+);
+
+// Favorit
+const getFavoritByPelanggan = db.prepare(
+  "SELECT menu_id FROM favorit WHERE pelanggan_id = ?"
+);
+const insertFavorit = db.prepare(
+  "INSERT OR IGNORE INTO favorit (pelanggan_id, menu_id) VALUES (?, ?)"
+);
+const deleteFavorit = db.prepare(
+  "DELETE FROM favorit WHERE pelanggan_id = ? AND menu_id = ?"
+);
+
+// Promo
+const getPromoAktif = db.prepare(
+  "SELECT id, kode, nama, deskripsi, tipe, nilai, min_belanja, max_diskon, kuota, terpakai, mulai, selesai FROM promo WHERE aktif = 1 AND DATE('now','localtime') BETWEEN mulai AND selesai AND (kuota = -1 OR terpakai < kuota)"
+);
+const getPromoByKode = db.prepare(
+  "SELECT * FROM promo WHERE kode = ? AND aktif = 1"
+);
+const incrementPromoUsage = db.prepare(
+  "UPDATE promo SET terpakai = terpakai + 1 WHERE id = ?"
+);
+
 // Poin config: 1 poin per 10.000 belanja
 const POIN_PER_RUPIAH = 10000;
+
+// Generate kode pesanan: WU-YYYYMMDD-NNN
+function generateKodePesanan() {
+  const now = new Date();
+  const tgl = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const count = db.prepare(
+    "SELECT COUNT(*) as c FROM pesanan_online WHERE DATE(created_at, 'localtime') = DATE('now', 'localtime')"
+  ).get().c;
+  return `WU-${tgl}-${String(count + 1).padStart(3, "0")}`;
+}
 
 function getSemuaData() {
   const rows = getAllTransaksi.all();
@@ -626,6 +741,128 @@ app.post("/api/pelanggan/:id/tukar-poin", (req, res) => {
   updatePelangganPoin.run(plg.poin - poin, req.params.id);
   const diskon = poin * 300; // 1 poin = Rp 300 diskon
   res.json({ success: true, diskon, sisaPoin: plg.poin - poin });
+});
+
+// ============================================
+// PELANGGAN APP API (Profil, Pesanan, Favorit)
+// ============================================
+
+// Profil
+app.get("/api/pelanggan/:id/profil", (req, res) => {
+  const plg = db.prepare(
+    "SELECT id, nama, telp, username, alamat, poin, total_belanja, total_kunjungan, created_at FROM pelanggan WHERE id = ?"
+  ).get(req.params.id);
+  if (!plg) return res.status(404).json({ success: false, pesan: "Tidak ditemukan." });
+  res.json({ success: true, pelanggan: plg });
+});
+
+app.put("/api/pelanggan/:id/profil", (req, res) => {
+  const { nama, telp, alamat } = req.body;
+  if (!nama || !nama.trim()) return res.status(400).json({ success: false, pesan: "Nama wajib diisi." });
+  db.prepare("UPDATE pelanggan SET nama = ?, telp = ?, alamat = ? WHERE id = ?").run(
+    nama.trim(), (telp || "").trim(), (alamat || "").trim(), req.params.id
+  );
+  res.json({ success: true });
+});
+
+app.put("/api/pelanggan/:id/password", (req, res) => {
+  const { passwordLama, passwordBaru } = req.body;
+  if (!passwordBaru || passwordBaru.length < 4) return res.status(400).json({ success: false, pesan: "Password baru minimal 4 karakter." });
+  const plg = db.prepare("SELECT password FROM pelanggan WHERE id = ?").get(req.params.id);
+  if (!plg) return res.status(404).json({ success: false, pesan: "Tidak ditemukan." });
+  if (plg.password !== passwordLama) return res.status(400).json({ success: false, pesan: "Password lama salah." });
+  db.prepare("UPDATE pelanggan SET password = ? WHERE id = ?").run(passwordBaru, req.params.id);
+  res.json({ success: true });
+});
+
+// Riwayat Pesanan
+app.get("/api/pelanggan/:id/pesanan", (req, res) => {
+  const rows = getPesananByPelanggan.all(req.params.id);
+  const pesanan = rows.map(r => ({ ...r, items: JSON.parse(r.items) }));
+  res.json({ success: true, pesanan });
+});
+
+app.get("/api/pesanan-online/:id", (req, res) => {
+  const row = getPesananById.get(req.params.id);
+  if (!row) return res.status(404).json({ success: false });
+  res.json({ success: true, pesanan: { ...row, items: JSON.parse(row.items) } });
+});
+
+app.put("/api/pesanan-online/:id/status", (req, res) => {
+  const { status } = req.body;
+  const valid = ["menunggu", "diproses", "siap", "selesai"];
+  if (!valid.includes(status)) return res.status(400).json({ success: false, pesan: "Status tidak valid." });
+  updatePesananStatus.run(status, req.params.id);
+  const pesanan = getPesananById.get(req.params.id);
+  if (pesanan) {
+    io.emit("order-status-changed", {
+      pesananId: pesanan.id,
+      kodePesanan: pesanan.kode_pesanan,
+      pelangganId: pesanan.pelanggan_id,
+      status,
+    });
+  }
+  res.json({ success: true });
+});
+
+// Favorit
+app.get("/api/pelanggan/:id/favorit", (req, res) => {
+  const rows = getFavoritByPelanggan.all(req.params.id);
+  res.json({ success: true, favorit: rows.map(r => r.menu_id) });
+});
+
+app.post("/api/pelanggan/:id/favorit", (req, res) => {
+  const { menuId } = req.body;
+  if (!menuId) return res.status(400).json({ success: false });
+  insertFavorit.run(req.params.id, menuId);
+  res.json({ success: true });
+});
+
+app.delete("/api/pelanggan/:id/favorit/:menuId", (req, res) => {
+  deleteFavorit.run(req.params.id, req.params.menuId);
+  res.json({ success: true });
+});
+
+// Promo
+app.get("/api/promo/aktif", (req, res) => {
+  res.json({ success: true, promo: getPromoAktif.all() });
+});
+
+app.post("/api/promo/validasi", (req, res) => {
+  const { kode, total } = req.body;
+  if (!kode) return res.status(400).json({ success: false, pesan: "Kode promo wajib diisi." });
+  const promo = getPromoByKode.get(kode.toUpperCase());
+  if (!promo) return res.status(404).json({ success: false, pesan: "Kode promo tidak ditemukan." });
+  const now = new Date().toISOString().slice(0, 10);
+  if (now < promo.mulai || now > promo.selesai) return res.status(400).json({ success: false, pesan: "Promo sudah berakhir." });
+  if (promo.kuota !== -1 && promo.terpakai >= promo.kuota) return res.status(400).json({ success: false, pesan: "Kuota promo sudah habis." });
+  if (total < promo.min_belanja) return res.status(400).json({ success: false, pesan: `Minimum belanja Rp ${promo.min_belanja.toLocaleString("id-ID")}.` });
+
+  let diskon = 0;
+  if (promo.tipe === "persen") {
+    diskon = Math.floor(total * promo.nilai / 100);
+    if (promo.max_diskon > 0 && diskon > promo.max_diskon) diskon = promo.max_diskon;
+  } else {
+    diskon = promo.nilai;
+  }
+  if (diskon > total) diskon = total;
+
+  res.json({ success: true, promo: { id: promo.id, kode: promo.kode, nama: promo.nama, tipe: promo.tipe, nilai: promo.nilai }, diskon });
+});
+
+app.post("/api/promo", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!role || !["admin", "owner"].includes(role)) return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  const { kode, nama, deskripsi, tipe, nilai, min_belanja, max_diskon, kuota, mulai, selesai } = req.body;
+  if (!kode || !nama || !tipe || !nilai || !mulai || !selesai) return res.status(400).json({ success: false, pesan: "Data tidak lengkap." });
+  try {
+    const result = db.prepare(
+      "INSERT INTO promo (kode, nama, deskripsi, tipe, nilai, min_belanja, max_diskon, kuota, mulai, selesai) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(kode.toUpperCase(), nama, deskripsi || "", tipe, nilai, min_belanja || 0, max_diskon || 0, kuota || -1, mulai, selesai);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (e) {
+    res.status(400).json({ success: false, pesan: "Kode promo sudah ada." });
+  }
 });
 
 // ============================================
@@ -1069,17 +1306,35 @@ io.on("connection", (socket) => {
     const metode = data.metode || "Tunai";
     const kasirLabel = `Online (${data.nama || "Tanpa Nama"})`;
     const trxItems = [];
+    const finalTotal = (data.total || 0) - (data.diskon || 0);
     for (const item of data.items) {
       insertTransaksi.run(tanggal, kasirLabel, item.nama, item.qty, item.harga * item.qty, metode);
-      // Kurangi stok
       if (item.menuId) kurangiStok.run(item.qty, item.menuId, item.qty);
       trxItems.push({ Tanggal: tanggal, Kasir: kasirLabel, Menu: item.nama, Qty: item.qty, Total: item.harga * item.qty, Metode: metode });
     }
     // Update poin pelanggan jika login
-    if (data.pelangganId && data.total > 0) {
-      const poinDapat = Math.floor(data.total / POIN_PER_RUPIAH);
-      updatePelangganBelanja.run(poinDapat, data.total, data.pelangganId);
+    if (data.pelangganId && finalTotal > 0) {
+      const poinDapat = Math.floor(finalTotal / POIN_PER_RUPIAH);
+      updatePelangganBelanja.run(poinDapat, finalTotal, data.pelangganId);
     }
+    // Simpan ke pesanan_online untuk tracking
+    let kodePesanan = null;
+    if (data.pelangganId) {
+      kodePesanan = generateKodePesanan();
+      insertPesananOnline.run(
+        data.pelangganId, data.nama || "Tanpa Nama", data.alamat || "", data.telp || "",
+        JSON.stringify(data.items), data.total || 0, data.diskon || 0, data.promoKode || "",
+        metode, data.tipe || "Dine In", data.catatan || "", "menunggu", kodePesanan
+      );
+      // Increment promo usage
+      if (data.promoKode) {
+        const promo = getPromoByKode.get(data.promoKode.toUpperCase());
+        if (promo) incrementPromoUsage.run(promo.id);
+      }
+    }
+    // Emit order confirmed back to the ordering client
+    socket.emit("order-confirmed", { kodePesanan, pelangganId: data.pelangganId });
+
     const allData = getSemuaData();
     io.emit("online-order", {
       nama: data.nama || "Tanpa Nama",
@@ -1087,18 +1342,42 @@ io.on("connection", (socket) => {
       telp: data.telp || "-",
       items: data.items,
       total: data.total,
+      diskon: data.diskon || 0,
       metode,
       tipe: data.tipe || "Dine In",
       catatan: data.catatan || "",
+      kodePesanan,
       waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
     });
     io.emit("transaction-update", {
       newItems: trxItems,
-      totalAmount: data.total,
+      totalAmount: finalTotal,
       history: allData.history,
       omzet: allData.omzet,
       menu: getAllMenu.all(),
     });
+  });
+
+  // Update status pesanan online (dari kasir)
+  socket.on("update-order-status", (data) => {
+    if (!["admin", "owner", "kasir"].includes(userRole)) {
+      socket.emit("error", { pesan: "Akses ditolak." });
+      return;
+    }
+    if (!data || !data.pesananId || !data.status) return;
+    const valid = ["menunggu", "diproses", "siap", "selesai"];
+    if (!valid.includes(data.status)) return;
+    updatePesananStatus.run(data.status, data.pesananId);
+    const pesanan = getPesananById.get(data.pesananId);
+    if (pesanan) {
+      io.emit("order-status-changed", {
+        pesananId: pesanan.id,
+        kodePesanan: pesanan.kode_pesanan,
+        pelangganId: pesanan.pelanggan_id,
+        status: data.status,
+      });
+      console.log(`[${userName}] Update pesanan ${pesanan.kode_pesanan} → ${data.status}`);
+    }
   });
 
   // Kasir memberitahu pesanan meja sudah selesai
