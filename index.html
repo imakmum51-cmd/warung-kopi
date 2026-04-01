@@ -2794,11 +2794,18 @@
         }
       }
       async function renderQR() {
-        const info = await getServerInfo();
-        const url =
-          _qrMode === "kasir"
+        let url;
+        const currentHost = location.host;
+        const isPublic = !currentHost.includes('localhost') && !currentHost.match(/^(192\.|10\.|172\.)/);
+        if (isPublic) {
+          const base = `${location.protocol}//${currentHost}`;
+          url = _qrMode === "kasir" ? base : `${base}/pembeli`;
+        } else {
+          const info = await getServerInfo();
+          url = _qrMode === "kasir"
             ? `http://${info.ip}:${info.port}`
             : `http://${info.ip}:${info.port}/pembeli`;
+        }
         const container = document.getElementById("qr-canvas");
         container.innerHTML = "";
         if (_qrInstance) {
@@ -6109,10 +6116,16 @@
         const list = document.getElementById('meja-qr-list');
         list.innerHTML = '';
         let baseURL;
-        try {
-          const info = await (await fetch('/api/server-info')).json();
-          baseURL = info.publicURL || `http://${info.ip}:${info.port}`;
-        } catch(e) { baseURL = `${location.protocol}//${location.host}`; }
+        const currentHost = location.host;
+        const isPublic = !currentHost.includes('localhost') && !currentHost.match(/^(192\.|10\.|172\.)/);
+        if (isPublic) {
+          baseURL = `${location.protocol}//${currentHost}`;
+        } else {
+          try {
+            const info = await (await fetch('/api/server-info')).json();
+            baseURL = info.publicURL || `http://${info.ip}:${info.port}`;
+          } catch(e) { baseURL = `${location.protocol}//${currentHost}`; }
+        }
         for (let i = 1; i <= count; i++) {
           const url = `${baseURL}/pesan?meja=${i}`;
           const card = document.createElement('div');
