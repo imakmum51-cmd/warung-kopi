@@ -75,8 +75,9 @@
       .nav-item:active { transform: scale(0.9); }
 
       /* Page Sections */
-      .page-section { display: none; }
-      .page-section.active { display: block; }
+      .page-section { display: none; opacity: 0; }
+      .page-section.active { display: block; animation: pageFadeIn 0.3s ease forwards; }
+      @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
       /* Status Badges */
       .status-menunggu { background: rgba(234,179,8,0.15); color: #facc15; border: 1px solid rgba(234,179,8,0.3); }
@@ -236,58 +237,40 @@
       <!-- Header -->
       <header class="sticky top-0 z-50 px-4 pt-4 pb-3" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
         <div class="flex items-center justify-between mb-3">
-          <div>
-            <h1 class="text-xl font-800"><span class="gradient-text">Warkop Urban</span></h1>
-            <p class="text-xs text-white/40 mt-0.5">Pesan Online</p>
-          </div>
           <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
-              <div id="status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></div>
-              <span class="text-[10px] text-white/40 font-600" id="status-text">Terhubung</span>
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-sm" id="home-avatar">WU</div>
+            <div>
+              <p class="text-white/40 text-[11px] font-500">Selamat datang,</p>
+              <h1 class="text-white font-800 text-base leading-tight" id="home-greeting">Pelanggan</h1>
             </div>
-            <button onclick="logout()" class="glass-card rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 border border-white/5 hover:border-red-500/30 transition-all" title="Logout">
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-              <span class="text-[10px] text-white/40 font-600">Keluar</span>
-            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <div id="status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></div>
+            <span class="text-[10px] text-white/40 font-600" id="status-text">Terhubung</span>
           </div>
         </div>
 
-        <!-- Alamat / Nama Pemesan -->
-        <div class="glass-card rounded-2xl px-4 py-3 mb-3" id="info-pemesan-bar">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
-              <span class="text-lg">👤</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <input type="text" id="input-nama" placeholder="Nama Anda..." class="w-full bg-transparent text-white font-600 text-sm outline-none placeholder-white/30" />
-            </div>
-          </div>
-          <div class="flex items-center gap-3 mt-2">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
-              <span class="text-lg">📍</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <input type="text" id="input-alamat" placeholder="Alamat pengiriman..." class="w-full bg-transparent text-white font-600 text-sm outline-none placeholder-white/30" />
-            </div>
-          </div>
-          <div class="flex items-center gap-3 mt-2">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center">
-              <span class="text-lg">📱</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <input type="tel" id="input-telp" placeholder="No. WhatsApp..." class="w-full bg-transparent text-white font-600 text-sm outline-none placeholder-white/30" />
-            </div>
-          </div>
+        <!-- Hidden inputs for order data (auto-filled from login) -->
+        <input type="hidden" id="input-nama" />
+        <input type="hidden" id="input-telp" />
+        <input type="hidden" id="input-alamat" />
+
+        <!-- Search -->
+        <div class="relative mb-3">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.3)" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" stroke-linecap="round"/></svg>
+          </span>
+          <input type="text" id="search-menu" placeholder="Cari menu..." oninput="searchMenu(this.value)" class="w-full bg-white/5 border border-white/8 rounded-2xl pl-10 pr-4 py-2.5 text-white text-sm font-500 outline-none placeholder-white/30 focus:border-orange-500/30 transition-all" />
         </div>
 
         <!-- Category -->
         <div class="flex gap-2 overflow-x-auto hide-scrollbar -mx-1 px-1 pb-1">
-          <button class="cat-pill active glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="semua" onclick="filterCat('semua')">Semua</button>
-          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="kopi" onclick="filterCat('kopi')">☕ Kopi</button>
-          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="minuman" onclick="filterCat('minuman')">🧃 Minuman</button>
-          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="makanan" onclick="filterCat('makanan')">🍜 Makanan</button>
-          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="snack" onclick="filterCat('snack')">🍩 Snack</button>
-          <button class="cat-pill glass-card rounded-full px-4 py-2 text-sm font-600 text-white/70 border border-white/5" data-cat="favorit" onclick="filterCat('favorit')">❤️ Favorit</button>
+          <button class="cat-pill active glass-card rounded-full px-4 py-2 text-xs font-700 text-white/70 border border-white/5" data-cat="semua" onclick="filterCat('semua')">Semua</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-xs font-700 text-white/70 border border-white/5" data-cat="kopi" onclick="filterCat('kopi')">☕ Kopi</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-xs font-700 text-white/70 border border-white/5" data-cat="minuman" onclick="filterCat('minuman')">🧃 Minuman</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-xs font-700 text-white/70 border border-white/5" data-cat="makanan" onclick="filterCat('makanan')">🍜 Makanan</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-xs font-700 text-white/70 border border-white/5" data-cat="snack" onclick="filterCat('snack')">🍩 Snack</button>
+          <button class="cat-pill glass-card rounded-full px-4 py-2 text-xs font-700 text-white/70 border border-white/5" data-cat="favorit" onclick="filterCat('favorit')">❤️ Favorit</button>
         </div>
       </header>
 
@@ -305,9 +288,16 @@
 
     <!-- ==================== PAGE: PESANAN ==================== -->
     <div id="page-pesanan" class="page-section relative z-10 pb-36 custom-scroll" style="min-height:100dvh;">
-      <div class="sticky top-0 z-50 px-4 pt-4 pb-3" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
-        <h1 class="text-xl font-800"><span class="gradient-text">Pesanan Saya</span></h1>
-        <p class="text-xs text-white/40 mt-0.5">Riwayat & tracking pesanan</p>
+      <div class="sticky top-0 z-50 px-4 pt-5 pb-4" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="rgba(96,165,250,0.8)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <div>
+            <h1 class="text-lg font-800 text-white">Pesanan Saya</h1>
+            <p class="text-[11px] text-white/40">Riwayat & tracking pesanan</p>
+          </div>
+        </div>
       </div>
       <div id="pesanan-list" class="px-4 mt-2 space-y-3"></div>
       <div id="pesanan-empty" class="hidden flex-col items-center justify-center py-20 px-8 text-center">
@@ -323,9 +313,16 @@
 
     <!-- ==================== PAGE: PROMO ==================== -->
     <div id="page-promo" class="page-section relative z-10 pb-36 custom-scroll" style="min-height:100dvh;">
-      <div class="sticky top-0 z-50 px-4 pt-4 pb-3" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
-        <h1 class="text-xl font-800"><span class="gradient-text">Promo & Voucher</span></h1>
-        <p class="text-xs text-white/40 mt-0.5">Dapatkan diskon spesial</p>
+      <div class="sticky top-0 z-50 px-4 pt-5 pb-4" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="rgba(251,146,60,0.8)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+          </div>
+          <div>
+            <h1 class="text-lg font-800 text-white">Promo & Voucher</h1>
+            <p class="text-[11px] text-white/40">Dapatkan diskon spesial</p>
+          </div>
+        </div>
       </div>
       <div id="promo-list" class="px-4 mt-2 space-y-3"></div>
       <div id="promo-empty" class="hidden flex-col items-center justify-center py-20 px-8 text-center">
@@ -340,9 +337,16 @@
 
     <!-- ==================== PAGE: PROFIL ==================== -->
     <div id="page-profil" class="page-section relative z-10 pb-36 custom-scroll" style="min-height:100dvh;">
-      <div class="sticky top-0 z-50 px-4 pt-4 pb-3" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
-        <h1 class="text-xl font-800"><span class="gradient-text">Profil Saya</span></h1>
-        <p class="text-xs text-white/40 mt-0.5">Kelola akun Anda</p>
+      <div class="sticky top-0 z-50 px-4 pt-5 pb-4" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-violet-500/20 flex items-center justify-center">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="rgba(167,139,250,0.8)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          </div>
+          <div>
+            <h1 class="text-lg font-800 text-white">Profil Saya</h1>
+            <p class="text-[11px] text-white/40">Kelola akun Anda</p>
+          </div>
+        </div>
       </div>
       <div class="px-4 mt-2 space-y-4">
         <!-- User Card -->
@@ -451,6 +455,11 @@
           <p class="text-white/30 text-sm">Keranjang masih kosong</p>
         </div>
         <div id="cart-footer" class="hidden mt-5 pt-4 border-t border-white/10">
+          <!-- Alamat Pengiriman (shown for Take Away) -->
+          <div class="mb-4" id="alamat-wrap">
+            <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Alamat Pengiriman</p>
+            <input type="text" id="input-alamat-cart" placeholder="Masukkan alamat pengiriman..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-500 outline-none placeholder-white/30 resize-none" />
+          </div>
           <!-- Tipe Pesanan -->
           <div class="mb-4">
             <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Tipe Pesanan</p>
@@ -706,7 +715,13 @@
         if (!loggedInUser) return;
         document.getElementById("input-nama").value = loggedInUser.nama || "";
         document.getElementById("input-telp").value = loggedInUser.telp || "";
-        if (loggedInUser.alamat) document.getElementById("input-alamat").value = loggedInUser.alamat;
+        document.getElementById("input-alamat").value = loggedInUser.alamat || "";
+        const alamatCart = document.getElementById("input-alamat-cart");
+        if (alamatCart) alamatCart.value = loggedInUser.alamat || "";
+        // Update header greeting
+        const firstName = (loggedInUser.nama || "Pelanggan").split(" ")[0];
+        document.getElementById("home-greeting").textContent = firstName;
+        document.getElementById("home-avatar").textContent = (loggedInUser.nama || "?").charAt(0).toUpperCase();
         document.getElementById("bottom-nav").classList.remove("hidden");
         loadFavorites();
       }
@@ -829,6 +844,7 @@
         if (currentCat === "semua") filtered = menuData;
         else if (currentCat === "favorit") filtered = menuData.filter(m => favoritSet.has(m.id));
         else filtered = menuData.filter(m => m.kategori === currentCat);
+        if (searchQuery) filtered = filtered.filter(m => m.nama.toLowerCase().includes(searchQuery));
         if (filtered.length === 0) { grid.innerHTML = ""; empty.classList.remove("hidden"); empty.classList.add("flex"); return; }
         empty.classList.add("hidden"); empty.classList.remove("flex");
         grid.innerHTML = filtered.map((item, i) => {
@@ -858,6 +874,11 @@
       // ============================
       // Category, Cart, Tipe, Metode
       // ============================
+      let searchQuery = "";
+      function searchMenu(q) {
+        searchQuery = q.toLowerCase().trim();
+        renderMenu();
+      }
       function filterCat(c) { currentCat = c; document.querySelectorAll(".cat-pill").forEach(b => b.classList.toggle("active", b.dataset.cat === c)); renderMenu(); }
       function pilihTipe(t) { tipePesanan = t; document.querySelectorAll(".tipe-btn").forEach(b => b.classList.toggle("active", b.dataset.tipe === t)); }
       function pilihMetode(m) { metodePembayaran = m; document.querySelectorAll(".metode-btn").forEach(b => b.classList.toggle("active", b.dataset.metode === m)); }
@@ -955,11 +976,10 @@
       // ============================
       function submitOrder() {
         if (isSubmitting || getCartCount() === 0) return;
-        const nama = document.getElementById("input-nama").value.trim();
-        const alamat = document.getElementById("input-alamat").value.trim();
-        const telp = document.getElementById("input-telp").value.trim();
-        if (!nama) { alert("Masukkan nama Anda!"); return; }
-        if (!telp) { alert("Masukkan no. WhatsApp!"); return; }
+        const nama = loggedInUser?.nama || document.getElementById("input-nama").value.trim();
+        const alamat = document.getElementById("input-alamat-cart").value.trim() || loggedInUser?.alamat || "";
+        const telp = loggedInUser?.telp || document.getElementById("input-telp").value.trim();
+        if (!nama) { alert("Silakan login terlebih dahulu!"); return; }
         isSubmitting = true;
         lastKodePesanan = null;
         const btn = document.getElementById("btn-submit");
