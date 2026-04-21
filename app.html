@@ -604,12 +604,8 @@
           <div class="flex-1"><h3 class="text-white font-800 text-base" id="popup-nama">-</h3><p class="gradient-text font-800 text-sm" id="popup-harga">Rp 0</p></div>
         </div>
         <div id="popup-ukuran-wrap" class="mb-4">
-          <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Ukuran Cup</p>
-          <div class="grid grid-cols-3 gap-2">
-            <button class="ukuran-btn active glass-card rounded-xl py-2.5 text-center border border-white/5 transition-all" data-ukuran="Regular" onclick="pilihUkuran('Regular')"><div class="text-lg mb-0.5">🥤</div><span class="text-white font-600 text-[11px]">Regular</span></button>
-            <button class="ukuran-btn glass-card rounded-xl py-2.5 text-center border border-white/5 transition-all" data-ukuran="Medium" onclick="pilihUkuran('Medium')"><div class="text-xl mb-0.5">🥤</div><span class="text-white font-600 text-[11px]">Medium</span></button>
-            <button class="ukuran-btn glass-card rounded-xl py-2.5 text-center border border-white/5 transition-all" data-ukuran="Large" onclick="pilihUkuran('Large')"><div class="text-2xl mb-0.5">🥤</div><span class="text-white font-600 text-[11px]">Large</span></button>
-          </div>
+          <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2" id="popup-ukuran-label">Ukuran</p>
+          <div class="grid grid-cols-3 gap-2" id="popup-ukuran-list"></div>
         </div>
         <div class="mb-4" id="popup-topping-wrap">
           <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Topping (opsional)</p>
@@ -920,6 +916,20 @@
       function pilihTipe(t) { tipePesanan = t; document.querySelectorAll(".tipe-btn").forEach(b => b.classList.toggle("active", b.dataset.tipe === t)); }
       function pilihMetode(m) { metodePembayaran = m; document.querySelectorAll(".metode-btn").forEach(b => b.classList.toggle("active", b.dataset.metode === m)); }
 
+      // Ukuran cup per kategori (n=nama, v=volume, p=tambahan harga dari base price)
+      const UKURAN_OPTIONS = {
+        kopi: [
+          { n:"Regular", v:"250ml", p:0,    size:"text-base" },
+          { n:"Medium",  v:"350ml", p:3000, size:"text-lg" },
+          { n:"Large",   v:"500ml", p:5000, size:"text-xl" },
+        ],
+        minuman: [
+          { n:"Kecil",  v:"300ml", p:0,    size:"text-base" },
+          { n:"Sedang", v:"500ml", p:3000, size:"text-lg" },
+          { n:"Jumbo",  v:"700ml", p:6000, size:"text-xl" },
+        ],
+      };
+
       const TOPPING_OPTIONS = {
         kopi:    [ {n:"Extra Shot",e:"☕"}, {n:"Boba",e:"🧋"}, {n:"Jelly",e:"🍮"}, {n:"Whip Cream",e:"🍦"}, {n:"Keju",e:"🧀"}, {n:"Coklat Bubuk",e:"🍫"} ],
         minuman: [ {n:"Boba",e:"🧋"}, {n:"Jelly",e:"🍮"}, {n:"Whip Cream",e:"🍦"}, {n:"Es Extra",e:"🧊"}, {n:"Lemon",e:"🍋"} ],
@@ -951,17 +961,37 @@
         return TOPPING_OPTIONS[item.kategori] || [];
       }
 
-      let popupItemId = null, popupUkuran = "Regular", popupToppings = [];
+      let popupItemId = null, popupUkuran = "Regular", popupUkuranPrice = 0, popupToppings = [];
       function addToCart(id) {
         const item = menuData.find(m => m.id === id);
         if (!item || item.stok <= 0) return;
-        popupItemId = id; popupUkuran = "Regular"; popupToppings = [];
+        popupItemId = id; popupToppings = []; popupUkuranPrice = 0;
         document.getElementById("popup-emoji").textContent = EMOJI[item.kategori] || "🍽️";
         document.getElementById("popup-nama").textContent = item.nama;
-        document.getElementById("popup-harga").textContent = `Rp ${item.harga.toLocaleString("id-ID")}`;
         document.getElementById("popup-catatan").value = "";
-        document.querySelectorAll(".ukuran-btn").forEach(b => b.classList.toggle("active", b.dataset.ukuran === "Regular"));
-        document.getElementById("popup-ukuran-wrap").style.display = ["kopi","minuman"].includes(item.kategori) ? "" : "none";
+
+        // Render ukuran sesuai kategori (kopi / minuman saja)
+        const sizes = UKURAN_OPTIONS[item.kategori] || [];
+        const ukuranWrap = document.getElementById("popup-ukuran-wrap");
+        const ukuranList = document.getElementById("popup-ukuran-list");
+        if (sizes.length === 0) {
+          ukuranWrap.style.display = "none";
+          popupUkuran = null;
+        } else {
+          ukuranWrap.style.display = "";
+          document.getElementById("popup-ukuran-label").textContent = item.kategori === "kopi" ? "Ukuran Cup" : "Ukuran Minuman";
+          popupUkuran = sizes[0].n;
+          popupUkuranPrice = sizes[0].p;
+          ukuranList.innerHTML = sizes.map((s, i) => `
+            <button class="ukuran-btn ${i===0?'active':''} glass-card rounded-xl py-2.5 text-center border border-white/5 transition-all" data-ukuran="${s.n}" data-price="${s.p}" onclick="pilihUkuran('${s.n}', ${s.p})">
+              <div class="${s.size} mb-0.5">🥤</div>
+              <span class="text-white font-600 text-[11px] block">${s.n}</span>
+              <span class="text-[9px] block" style="color:#94a3b8;">${s.v}</span>
+              ${s.p > 0 ? `<span class="text-[9px] font-700 block" style="color:#ea580c;">+${(s.p/1000)}k</span>` : `<span class="text-[9px] block" style="color:transparent;">·</span>`}
+            </button>
+          `).join("");
+        }
+        updatePopupPrice();
 
         // Render toppings sesuai nama/kategori menu
         const toppings = getToppingsForItem(item);
@@ -984,15 +1014,24 @@
         panel.style.transform = "translateY(100%)";
         setTimeout(() => { popup.style.opacity = "0"; popup.style.pointerEvents = "none"; }, 300);
       }
-      function pilihUkuran(u) { popupUkuran = u; document.querySelectorAll(".ukuran-btn").forEach(b => b.classList.toggle("active", b.dataset.ukuran === u)); }
+      function pilihUkuran(u, p) {
+        popupUkuran = u; popupUkuranPrice = p || 0;
+        document.querySelectorAll(".ukuran-btn").forEach(b => b.classList.toggle("active", b.dataset.ukuran === u));
+        updatePopupPrice();
+      }
+      function updatePopupPrice() {
+        const item = menuData.find(m => m.id === popupItemId); if (!item) return;
+        document.getElementById("popup-harga").textContent = `Rp ${(item.harga + popupUkuranPrice).toLocaleString("id-ID")}`;
+      }
       function toggleTopping(btn) { const t = btn.dataset.topping; btn.classList.toggle("active"); if (popupToppings.includes(t)) popupToppings = popupToppings.filter(x => x !== t); else popupToppings.push(t); }
       function confirmAddToCart() {
         const item = menuData.find(m => m.id === popupItemId); if (!item) return;
         const cat = document.getElementById("popup-catatan").value.trim();
         const showUk = ["kopi","minuman"].includes(item.kategori);
+        const finalHarga = item.harga + (showUk ? popupUkuranPrice : 0);
         const key = `${item.id}_${showUk?popupUkuran:''}_${popupToppings.sort().join(',')}_${cat}`;
         if (cart[key]) { if (cart[key].qty >= item.stok) { closeItemPopup(); return; } cart[key].qty++; }
-        else { cart[key] = { id: item.id, nama: item.nama, harga: item.harga, qty: 1, ukuran: showUk ? popupUkuran : null, topping: popupToppings.length > 0 ? [...popupToppings] : null, catatan: cat || null }; }
+        else { cart[key] = { id: item.id, nama: item.nama, harga: finalHarga, qty: 1, ukuran: showUk ? popupUkuran : null, topping: popupToppings.length > 0 ? [...popupToppings] : null, catatan: cat || null }; }
         closeItemPopup();
         const fab = document.getElementById("cart-fab"); fab.classList.remove("hidden"); fab.classList.add("flex");
         updateCartUI(); renderMenu();
