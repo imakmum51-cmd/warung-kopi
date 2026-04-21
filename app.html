@@ -383,10 +383,36 @@
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-xl" id="profil-avatar">?</div>
             <div class="flex-1 min-w-0">
-              <h2 class="text-white font-800 text-base truncate" id="profil-nama">-</h2>
-              <p class="text-white/40 text-xs" id="profil-username">@-</p>
+              <h2 class="font-800 text-base truncate" id="profil-nama" style="color:#0f172a;">-</h2>
+              <p class="text-xs" id="profil-username" style="color:#64748b;">@-</p>
             </div>
           </div>
+        </div>
+
+        <!-- Tier / Membership Card -->
+        <div class="rounded-2xl p-5 relative overflow-hidden" id="tier-card" style="background:linear-gradient(135deg,#c97b38,#a55a1f);">
+          <div class="relative z-10">
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <p class="text-white/70 text-[10px] font-600 uppercase tracking-widest">Membership</p>
+                <h3 class="text-white font-900 text-xl" id="tier-name">Bronze</h3>
+              </div>
+              <div class="text-5xl" id="tier-emoji">🥉</div>
+            </div>
+            <div id="tier-benefit" class="text-white/80 text-xs font-600 mb-3">Standar poin: 1 poin / Rp 10.000</div>
+            <div id="tier-progress-wrap">
+              <div class="flex items-center justify-between text-white/70 text-[10px] font-700 mb-1">
+                <span id="tier-progress-label">Menuju Silver</span>
+                <span id="tier-progress-pct">0%</span>
+              </div>
+              <div class="w-full bg-black/25 rounded-full h-1.5 overflow-hidden">
+                <div id="tier-progress-bar" class="h-full bg-white rounded-full transition-all" style="width:0%"></div>
+              </div>
+              <p class="text-white/60 text-[10px] mt-1.5" id="tier-butuh-lagi">Belanja Rp 500.000 lagi</p>
+            </div>
+          </div>
+          <!-- Glow pattern -->
+          <div class="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/10 blur-2xl"></div>
         </div>
         <!-- Stats -->
         <div class="grid grid-cols-3 gap-3">
@@ -531,6 +557,42 @@
               <button onclick="removePromo()" class="text-white/40 text-xs font-600 hover:text-red-400">&times; Hapus</button>
             </div>
             <p id="promo-error" class="text-red-400 text-xs font-600 mt-1 hidden"></p>
+          </div>
+
+          <!-- Tukar Poin (hanya tampil kalau login & punya poin) -->
+          <div id="redeem-poin-wrap" class="mb-4 hidden">
+            <div class="rounded-2xl p-4" style="background:linear-gradient(135deg,#fef3c7,#fed7aa); border:1px solid #fbbf24;">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <p class="text-xs font-800" style="color:#9a3412;">💎 Tukar Poin</p>
+                  <p class="text-[10px] font-600" style="color:#9a3412;" id="poin-info">Saldo: 0 poin</p>
+                </div>
+                <button onclick="resetPoinRedeem()" id="btn-reset-poin" class="text-[10px] font-bold hidden" style="color:#9a3412;">× Batal</button>
+              </div>
+              <div class="flex gap-2 flex-wrap mb-2" id="poin-quick-btns"></div>
+              <div class="flex gap-2 items-center">
+                <input type="number" id="input-poin-redeem" placeholder="0" min="0" class="flex-1 rounded-xl px-3 py-2 text-sm font-700 outline-none" style="background:#ffffff; border:1px solid #fbbf24; color:#9a3412;" />
+                <button onclick="applyPoinRedeem()" class="px-4 py-2 rounded-xl text-white font-700 text-xs" style="background:linear-gradient(135deg,#f59e0b,#d97706);">Tukar</button>
+              </div>
+              <p id="poin-result" class="text-[10px] font-600 mt-1 hidden" style="color:#047857;"></p>
+            </div>
+          </div>
+
+          <!-- Pre-order / Jadwal Ambil -->
+          <div class="mb-4">
+            <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Waktu Pesanan</p>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+              <button class="waktu-btn active glass-card rounded-xl py-2.5 px-3 flex items-center justify-center gap-2 border border-white/5 transition-all" data-waktu="sekarang" onclick="pilihWaktu('sekarang')">
+                <span>⚡</span><span class="text-sm font-600" style="color:#0f172a;">Sekarang</span>
+              </button>
+              <button class="waktu-btn glass-card rounded-xl py-2.5 px-3 flex items-center justify-center gap-2 border border-white/5 transition-all" data-waktu="jadwal" onclick="pilihWaktu('jadwal')">
+                <span>🕒</span><span class="text-sm font-600" style="color:#0f172a;">Pre-order</span>
+              </button>
+            </div>
+            <div id="jadwal-wrap" class="hidden">
+              <input type="datetime-local" id="input-jadwal" class="w-full rounded-xl px-4 py-2.5 text-sm font-600 outline-none" style="background:#f1f5f9; border:1px solid #e2e8f0; color:#0f172a;" />
+              <p class="text-[10px] font-600 mt-1" style="color:#64748b;">Minimal 30 menit dari sekarang</p>
+            </div>
           </div>
           <!-- Total -->
           <div class="space-y-2 mb-4">
@@ -1086,6 +1148,85 @@
       function getCartCount() { return Object.values(cart).reduce((s, i) => s + i.qty, 0); }
       function getCartTotal() { return Object.values(cart).reduce((s, i) => s + i.harga * i.qty, 0); }
 
+      // ============================
+      // Loyalty Redeem Poin & Pre-order
+      // ============================
+      const DISKON_PER_POIN = 300;
+      let poinRedeemed = 0;     // jumlah poin yg ditukar
+      let poinDiskon = 0;       // diskon Rp dari poin
+      let waktuPesanan = "sekarang"; // "sekarang" | "jadwal"
+
+      async function refreshPoinWrap() {
+        const wrap = document.getElementById("redeem-poin-wrap");
+        if (!loggedInUser) { wrap.classList.add("hidden"); return; }
+        try {
+          const res = await fetch(`/api/pelanggan/${loggedInUser.id}/tier-info`);
+          const t = await res.json();
+          if (!t.success) { wrap.classList.add("hidden"); return; }
+          _myTier = t;
+          if ((t.poin || 0) < 1) { wrap.classList.add("hidden"); return; }
+          wrap.classList.remove("hidden");
+          document.getElementById("poin-info").textContent = `Saldo ${t.poin} poin · 1 poin = Rp ${DISKON_PER_POIN.toLocaleString("id-ID")}`;
+          // Quick pick buttons
+          const quicks = [10, 50, 100, t.poin].filter((v,i,a) => v <= t.poin && a.indexOf(v)===i);
+          document.getElementById("poin-quick-btns").innerHTML = quicks.map(n =>
+            `<button onclick="setPoinInput(${n})" class="text-[10px] font-800 px-3 py-1.5 rounded-full" style="background:#ffffff; color:#9a3412; border:1px solid #fbbf24;">${n} poin · Rp ${(n*DISKON_PER_POIN).toLocaleString("id-ID")}</button>`
+          ).join("");
+        } catch(e) { wrap.classList.add("hidden"); }
+      }
+      function setPoinInput(n) { document.getElementById("input-poin-redeem").value = n; }
+      function applyPoinRedeem() {
+        if (!_myTier) return;
+        const n = parseInt(document.getElementById("input-poin-redeem").value) || 0;
+        if (n < 1) return alert("Masukkan jumlah poin > 0");
+        if (n > _myTier.poin) return alert(`Saldo cuma ${_myTier.poin} poin.`);
+        const subtotal = getCartTotal();
+        const maxFromCart = Math.floor(subtotal / DISKON_PER_POIN);
+        if (n > maxFromCart) return alert(`Maksimal ${maxFromCart} poin untuk total saat ini.`);
+        poinRedeemed = n;
+        poinDiskon = n * DISKON_PER_POIN;
+        const result = document.getElementById("poin-result");
+        result.textContent = `✅ -Rp ${poinDiskon.toLocaleString("id-ID")} terpasang dari ${n} poin`;
+        result.classList.remove("hidden");
+        document.getElementById("btn-reset-poin").classList.remove("hidden");
+        updateCartUI();
+      }
+      function resetPoinRedeem() {
+        poinRedeemed = 0; poinDiskon = 0;
+        document.getElementById("input-poin-redeem").value = "";
+        document.getElementById("poin-result").classList.add("hidden");
+        document.getElementById("btn-reset-poin").classList.add("hidden");
+        updateCartUI();
+      }
+      function pilihWaktu(w) {
+        waktuPesanan = w;
+        document.querySelectorAll(".waktu-btn").forEach(b => b.classList.toggle("active", b.dataset.waktu === w));
+        const jadwalWrap = document.getElementById("jadwal-wrap");
+        if (w === "jadwal") {
+          jadwalWrap.classList.remove("hidden");
+          const input = document.getElementById("input-jadwal");
+          if (!input.value) {
+            const d = new Date(Date.now() + 60 * 60 * 1000); // default 1 jam dari sekarang
+            d.setSeconds(0,0);
+            input.value = d.toISOString().slice(0, 16);
+            const min = new Date(Date.now() + 30 * 60 * 1000);
+            input.min = min.toISOString().slice(0, 16);
+          }
+        } else { jadwalWrap.classList.add("hidden"); }
+      }
+      function getJadwalAmbil() {
+        if (waktuPesanan !== "jadwal") return "";
+        const v = document.getElementById("input-jadwal").value;
+        if (!v) return "";
+        // Validasi minimal 30 menit dari sekarang
+        const d = new Date(v);
+        if (d.getTime() < Date.now() + 25 * 60 * 1000) {
+          alert("Jadwal ambil minimal 30 menit dari sekarang.");
+          return null;
+        }
+        return v;
+      }
+
       function updateCartUI() {
         const count = getCartCount(), total = getCartTotal();
         const fab = document.getElementById("cart-fab"), badge = document.getElementById("cart-badge");
@@ -1114,12 +1255,16 @@
             </div>`;
           }).join("");
           document.getElementById("cart-subtotal").textContent = `Rp ${total.toLocaleString("id-ID")}`;
-          const finalTotal = Math.max(0, total - promoDiskon);
+          const totalDiskon = promoDiskon + poinDiskon;
+          const finalTotal = Math.max(0, total - totalDiskon);
           totalEl.textContent = `Rp ${finalTotal.toLocaleString("id-ID")}`;
           const diskonRow = document.getElementById("cart-diskon-row");
-          if (promoDiskon > 0) {
+          if (totalDiskon > 0) {
             diskonRow.classList.remove("hidden"); diskonRow.classList.add("flex");
-            document.getElementById("cart-diskon").textContent = `-Rp ${promoDiskon.toLocaleString("id-ID")}`;
+            const parts = [];
+            if (promoDiskon > 0) parts.push(`Promo -Rp ${promoDiskon.toLocaleString("id-ID")}`);
+            if (poinDiskon > 0) parts.push(`Poin -Rp ${poinDiskon.toLocaleString("id-ID")}`);
+            document.getElementById("cart-diskon").textContent = parts.join(" + ");
           } else { diskonRow.classList.add("hidden"); diskonRow.classList.remove("flex"); }
         }
       }
@@ -1127,7 +1272,10 @@
       function toggleCart() {
         const o = document.getElementById("cart-overlay"), p = document.getElementById("cart-panel");
         if (p.classList.contains("show")) { o.classList.remove("show"); p.classList.remove("show"); }
-        else { o.classList.add("show"); p.classList.add("show"); }
+        else {
+          o.classList.add("show"); p.classList.add("show");
+          refreshPoinWrap();
+        }
       }
 
       // ============================
@@ -1155,13 +1303,18 @@
           return obj;
         });
         const subtotal = getCartTotal();
-        const finalTotal = Math.max(0, subtotal - promoDiskon);
+        const totalDiskon = promoDiskon + poinDiskon;
+        const finalTotal = Math.max(0, subtotal - totalDiskon);
+        const jadwalAmbil = getJadwalAmbil();
+        if (jadwalAmbil === null) { isSubmitting = false; btn.disabled = false; btn.innerHTML = 'Kirim Pesanan'; return; }
         socket.emit("online-order", {
           nama, alamat, telp, items, total: subtotal,
-          diskon: promoDiskon, promoKode: appliedPromo?.kode || "",
+          diskon: totalDiskon, promoKode: appliedPromo?.kode || "",
+          poinRedeemed: poinRedeemed || 0,
           metode: metodePembayaran, tipe: tipePesanan,
           catatan: document.getElementById("input-catatan").value.trim(),
           pelangganId: loggedInUser?.id || null,
+          jadwalAmbil: jadwalAmbil || "",
         });
         setTimeout(() => {
           toggleCart();
@@ -1180,6 +1333,12 @@
 
       function resetPage() {
         cart = {}; isSubmitting = false; tipePesanan = "Dine In"; metodePembayaran = "Tunai";
+        poinRedeemed = 0; poinDiskon = 0; waktuPesanan = "sekarang";
+        const poinInput = document.getElementById("input-poin-redeem"); if (poinInput) poinInput.value = "";
+        const poinResult = document.getElementById("poin-result"); if (poinResult) poinResult.classList.add("hidden");
+        const btnReset = document.getElementById("btn-reset-poin"); if (btnReset) btnReset.classList.add("hidden");
+        document.querySelectorAll(".waktu-btn").forEach(b => b.classList.toggle("active", b.dataset.waktu === "sekarang"));
+        const jw = document.getElementById("jadwal-wrap"); if (jw) jw.classList.add("hidden");
         const btn = document.getElementById("btn-submit"); btn.disabled = false;
         btn.innerHTML = '<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Kirim Pesanan';
         document.getElementById("success-overlay").classList.remove("show");
@@ -1333,9 +1492,19 @@
                 }).join("")}
               </div>
             </div>` : "";
+          const jadwalBadge = p.jadwal_ambil
+            ? `<span class="text-[10px] font-700 px-2 py-0.5 rounded-full ml-1" style="background:#ede9fe;color:#6d28d9;">🕒 ${new Date(p.jadwal_ambil).toLocaleString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</span>`
+            : "";
+          const reorderBtn = items.length > 0 && items.some(i => i.menuId) ? `
+            <button onclick="event.stopPropagation(); reorderPesanan(${p.id})" class="w-full mt-3 py-2 rounded-xl font-700 text-xs flex items-center justify-center gap-1.5" style="background:linear-gradient(135deg,#ea580c,#dc2626);color:#ffffff;">
+              🔁 Pesan Lagi
+            </button>` : "";
           return `<div class="glass-card rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-600" style="color:#64748b;">${p.kode_pesanan}</span>
+            <div class="flex items-center justify-between mb-2 flex-wrap gap-1">
+              <div class="flex items-center gap-1">
+                <span class="text-xs font-600" style="color:#64748b;">${p.kode_pesanan}</span>
+                ${jadwalBadge}
+              </div>
               <span class="status-${p.status} text-xs font-700 px-2.5 py-1 rounded-full">${statusIcon[p.status]||""} ${statusLabel[p.status]||p.status}</span>
             </div>
             <p class="font-600 text-sm truncate" style="color:#0f172a;">${itemsText}</p>
@@ -1343,10 +1512,55 @@
               <span class="text-xs" style="color:#94a3b8;">${tgl}</span>
               <span class="gradient-text font-800 text-sm">Rp ${(p.total - (p.diskon||0)).toLocaleString("id-ID")}</span>
             </div>
-            ${p.diskon > 0 ? `<p class="text-[10px] mt-1" style="color:#059669;">Diskon: -Rp ${p.diskon.toLocaleString("id-ID")} (${p.promo_kode})</p>` : ""}
+            ${p.diskon > 0 ? `<p class="text-[10px] mt-1" style="color:#059669;">Diskon: -Rp ${p.diskon.toLocaleString("id-ID")} (${p.promo_kode||"poin"})</p>` : ""}
+            ${reorderBtn}
             ${ratingSection}
           </div>`;
         }).join("");
+      }
+
+      // ============================
+      // Reorder 1-click
+      // ============================
+      function reorderPesanan(pesananId) {
+        const p = pesananList.find(x => x.id === pesananId);
+        if (!p || !p.items) return alert("Data pesanan tidak lengkap.");
+        let added = 0, skipped = 0;
+        p.items.forEach(i => {
+          if (!i.menuId) { skipped++; return; }
+          const menu = menuData.find(m => m.id === i.menuId);
+          if (!menu || (menu.stok || 0) < i.qty) { skipped++; return; }
+          const key = `${i.menuId}_${i.ukuran || ''}_${(i.topping || []).sort().join(',')}_${i.catatan || ''}`;
+          if (cart[key]) {
+            cart[key].qty += i.qty;
+          } else {
+            cart[key] = {
+              id: i.menuId, nama: i.nama, harga: i.harga, qty: i.qty,
+              ukuran: i.ukuran || null,
+              topping: i.topping && i.topping.length ? [...i.topping] : null,
+              catatan: i.catatan || null,
+            };
+          }
+          added++;
+        });
+        updateCartUI();
+        if (added === 0) {
+          alert("Tidak ada item yang bisa di-reorder (menu mungkin sudah dihapus atau stok habis).");
+          return;
+        }
+        let msg = `${added} item ditambahkan ke keranjang!`;
+        if (skipped > 0) msg += ` (${skipped} item dilewati karena tidak tersedia)`;
+        showToast(msg);
+        navigateTo("home");
+        setTimeout(() => toggleCart(), 400);
+      }
+      function showToast(msg) {
+        // Simple toast
+        const t = document.createElement("div");
+        t.textContent = msg;
+        t.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 10px 30px rgba(0,0,0,0.2);animation:fadeUp 0.3s ease;";
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
       }
 
       // ============================
@@ -1511,11 +1725,16 @@
       // ============================
       // Profil
       // ============================
+      let _myTier = null;
       async function loadProfil() {
         if (!loggedInUser) return;
         try {
-          const res = await fetch(`/api/pelanggan/${loggedInUser.id}/profil`);
-          const data = await res.json();
+          const [profRes, tierRes] = await Promise.all([
+            fetch(`/api/pelanggan/${loggedInUser.id}/profil`),
+            fetch(`/api/pelanggan/${loggedInUser.id}/tier-info`),
+          ]);
+          const data = await profRes.json();
+          const tinfo = await tierRes.json();
           if (data.success) {
             const p = data.pelanggan;
             loggedInUser = { ...loggedInUser, ...p };
@@ -1530,7 +1749,40 @@
             document.getElementById("edit-telp").value = p.telp || "";
             document.getElementById("edit-alamat").value = p.alamat || "";
           }
+          if (tinfo.success) {
+            _myTier = tinfo;
+            renderTier(tinfo);
+          }
         } catch (e) {}
+      }
+      function renderTier(info) {
+        const t = info.tier;
+        const next = info.next_tier;
+        const card = document.getElementById("tier-card");
+        // Gradient per tier
+        const TIER_BG = {
+          bronze: "linear-gradient(135deg,#c97b38,#7c4a1a)",
+          silver: "linear-gradient(135deg,#94a3b8,#64748b)",
+          gold: "linear-gradient(135deg,#f59e0b,#b45309)",
+          platinum: "linear-gradient(135deg,#8b5cf6,#4c1d95)",
+        };
+        card.style.background = TIER_BG[t.id] || TIER_BG.bronze;
+        document.getElementById("tier-name").textContent = t.nama;
+        document.getElementById("tier-emoji").textContent = t.emoji;
+        const bonusText = t.bonus_pct > 0
+          ? `✨ Bonus ${t.bonus_pct}% poin tiap transaksi`
+          : `Dapat 1 poin / Rp ${info.poin_per_rupiah.toLocaleString("id-ID")}`;
+        document.getElementById("tier-benefit").innerHTML = `${bonusText}<br><span class="text-white/60">💎 Tukar poin: 1 poin = Rp ${info.diskon_per_poin.toLocaleString("id-ID")}</span>`;
+        const wrap = document.getElementById("tier-progress-wrap");
+        if (next) {
+          wrap.style.display = "";
+          document.getElementById("tier-progress-label").textContent = `Menuju ${next.nama} ${next.emoji}`;
+          document.getElementById("tier-progress-pct").textContent = info.tier_progress + "%";
+          document.getElementById("tier-progress-bar").style.width = info.tier_progress + "%";
+          document.getElementById("tier-butuh-lagi").textContent = `Belanja Rp ${info.butuh_lagi.toLocaleString("id-ID")} lagi`;
+        } else {
+          wrap.style.display = "none";
+        }
       }
       async function saveProfil() {
         if (!loggedInUser) return;

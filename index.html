@@ -7415,6 +7415,7 @@
               status: p.status === 'menunggu' ? 'baru' : p.status,
               isOnline: !isMejaOrder,
               isMeja: isMejaOrder,
+              jadwalAmbil: p.jadwal_ambil || '',
             });
           }
           renderQrMejaOrders();
@@ -7513,6 +7514,21 @@
               ${order.diskon > 0 ? `<div class="flex items-center gap-1 text-[9px]"><span class="text-purple-400 font-bold w-12">Diskon</span><span class="text-green-600 font-bold">-Rp ${order.diskon.toLocaleString('id-ID')}</span></div>` : ''}
             </div>
           ` : '';
+          const jadwalBanner = order.jadwalAmbil ? (() => {
+            const d = new Date(order.jadwalAmbil);
+            const now = new Date();
+            const minutesUntil = Math.floor((d.getTime() - now.getTime()) / 60000);
+            const urgent = minutesUntil <= 30 && minutesUntil >= 0;
+            const bg = urgent ? "#fef3c7" : "#ede9fe";
+            const textColor = urgent ? "#92400e" : "#6d28d9";
+            const label = urgent ? `⚡ AMBIL ~${minutesUntil} MENIT` : `🕒 PRE-ORDER`;
+            return `<div class="px-3 py-1.5 border-b" style="background:${bg};border-color:${urgent?'#fde68a':'#ddd6fe'};">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[9px] font-black" style="color:${textColor};">${label}</span>
+                <span class="text-[10px] font-bold" style="color:${textColor};">${d.toLocaleString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</span>
+              </div>
+            </div>`;
+          })() : '';
           return `
             <div class="bg-white rounded-2xl border-2 border-${borderColor}-200 overflow-hidden shadow-sm" id="qr-order-${order.id}">
               <div class="bg-gradient-to-r ${headerColor} px-3 py-2 flex items-center justify-between">
@@ -7525,6 +7541,7 @@
                 </div>
                 <span class="bg-white/20 text-white text-[8px] font-black px-2 py-0.5 rounded-full">${order.isOnline ? 'ONLINE' : statusLabel}</span>
               </div>
+              ${jadwalBanner}
               ${onlineInfo}
               ${mejaInfo}
               <div class="px-3 py-2 space-y-1">${itemsHtml}</div>
@@ -7655,6 +7672,7 @@
           waktu: data.waktu || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
           status: 'baru',
           isOnline: true,
+          jadwalAmbil: data.jadwalAmbil || '',
         });
         renderQrMejaOrders();
         switchOrderTab('qrmeja');

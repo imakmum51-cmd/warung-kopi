@@ -172,6 +172,9 @@ db.exec(`
   );
 `);
 
+// Migrasi: tambah kolom jadwal_ambil di pesanan_online untuk pre-order
+try { db.exec("ALTER TABLE pesanan_online ADD COLUMN jadwal_ambil TEXT DEFAULT ''"); } catch(e) {}
+
 // Tabel pengeluaran operasional (buat profit bersih)
 db.exec(`
   CREATE TABLE IF NOT EXISTS pengeluaran (
@@ -481,7 +484,7 @@ const updatePelangganInfo = db.prepare(
 
 // Pesanan Online
 const insertPesananOnline = db.prepare(
-  "INSERT INTO pesanan_online (pelanggan_id, nama, alamat, telp, meja, sumber, items, total, diskon, promo_kode, metode, tipe, catatan, status, kode_pesanan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  "INSERT INTO pesanan_online (pelanggan_id, nama, alamat, telp, meja, sumber, items, total, diskon, promo_kode, metode, tipe, catatan, status, kode_pesanan, jadwal_ambil) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 );
 const getPesananByPelanggan = db.prepare(
   "SELECT * FROM pesanan_online WHERE pelanggan_id = ? ORDER BY id DESC LIMIT 50"
@@ -1075,6 +1078,48 @@ app.delete("/api/pelanggan/:id", (req, res) => {
   }
   deletePelangganStmt.run(req.params.id);
   res.json({ success: true });
+});
+
+// Membership tier config (berdasarkan total_belanja)
+const TIER_CONFIG = [
+  { id: "bronze",   nama: "Bronze",   emoji: "🥉", min_belanja: 0,        bonus_pct: 0,  color: "#c97b38" },
+  { id: "silver",   nama: "Silver",   emoji: "🥈", min_belanja: 500000,   bonus_pct: 25, color: "#94a3b8" },
+  { id: "gold",     nama: "Gold",     emoji: "🥇", min_belanja: 2000000,  bonus_pct: 50, color: "#f59e0b" },
+  { id: "platinum", nama: "Platinum", emoji: "💎", min_belanja: 5000000,  bonus_pct: 100, color: "#8b5cf6" },
+];
+
+function getTierFor(totalBelanja) {
+  let current = TIER_CONFIG[0];
+  for (const t of TIER_CONFIG) {
+    if (totalBelanja >= t.min_belanja) current = t;
+  }
+  const idx = TIER_CONFIG.findIndex(t => t.id === current.id);
+  const next = TIER_CONFIG[idx + 1] || null;
+  return {
+    current,
+    next,
+    progress: next ? Math.min(100, Math.round(((totalBelanja - current.min_belanja) / (next.min_belanja - current.min_belanja)) * 100)) : 100,
+    butuh_lagi: next ? next.min_belanja - totalBelanja : 0,
+  };
+}
+
+// Tier info pelanggan
+app.get("/api/pelanggan/:id/tier-info", (req, res) => {
+  const plg = getPelangganById.get(req.params.id);
+  if (!plg) return res.status(404).json({ success: false, pesan: "Tidak ditemukan." });
+  const tier = getTierFor(plg.total_belanja || 0);
+  res.json({
+    success: true,
+    poin: plg.poin,
+    total_belanja: plg.total_belanja,
+    total_kunjungan: plg.total_kunjungan,
+    poin_per_rupiah: POIN_PER_RUPIAH,
+    diskon_per_poin: 300,
+    tier: tier.current,
+    next_tier: tier.next,
+    tier_progress: tier.progress,
+    butuh_lagi: tier.butuh_lagi,
+  });
 });
 
 // Tukar poin
@@ -1769,7 +1814,7 @@ io.on("connection", (socket) => {
       insertPesananOnline.run(
         0, `Meja ${data.meja}`, "", "", data.meja, "meja",
         JSON.stringify(data.items), data.total || 0, 0, "",
-        metode, data.tipe || "Dine In", "", "menunggu", kodePesanan
+        metode, data.tipe || "Dine In", "", "menunggu", kodePesanan, ""
       );
       const pesananId = db.prepare("SELECT last_insert_rowid() as id").get().id;
       // Broadcast ke semua kasir/admin/owner + update data
@@ -1819,9 +1864,19 @@ io.on("connection", (socket) => {
         if (item.menuId) kurangiStok.run(item.qty, item.menuId, item.qty);
         trxItems.push({ Tanggal: tanggal, Kasir: kasirLabel, Menu: item.nama, Qty: item.qty, Total: item.harga * item.qty, Metode: metode });
       }
-      // Update poin pelanggan jika login
+      // Deduct poin yg ditukar (jika ada) sebelum tambah poin baru
+      if (data.pelangganId && data.poinRedeemed && data.poinRedeemed > 0) {
+        const plg = getPelangganById.get(data.pelangganId);
+        if (plg && plg.poin >= data.poinRedeemed) {
+          updatePelangganPoin.run(plg.poin - data.poinRedeemed, data.pelangganId);
+        }
+      }
+      // Update poin pelanggan jika login — bonus multiplier per tier
       if (data.pelangganId && finalTotal > 0) {
-        const poinDapat = Math.floor(finalTotal / POIN_PER_RUPIAH);
+        const plg = getPelangganById.get(data.pelangganId);
+        const tier = getTierFor(plg?.total_belanja || 0).current;
+        const multiplier = 1 + (tier.bonus_pct / 100);
+        const poinDapat = Math.floor((finalTotal / POIN_PER_RUPIAH) * multiplier);
         updatePelangganBelanja.run(poinDapat, finalTotal, data.pelangganId);
       }
       // Simpan ke pesanan_online untuk tracking (semua order, termasuk guest)
@@ -1830,7 +1885,8 @@ io.on("connection", (socket) => {
         data.pelangganId || 0, data.nama || "Tanpa Nama", data.alamat || "", data.telp || "",
         "", "online",
         JSON.stringify(data.items), data.total || 0, data.diskon || 0, data.promoKode || "",
-        metode, data.tipe || "Dine In", data.catatan || "", "menunggu", kodePesanan
+        metode, data.tipe || "Dine In", data.catatan || "", "menunggu", kodePesanan,
+        data.jadwalAmbil || ""
       );
       // Increment promo usage
       if (data.promoKode) {
@@ -1852,6 +1908,7 @@ io.on("connection", (socket) => {
         tipe: data.tipe || "Dine In",
         catatan: data.catatan || "",
         kodePesanan,
+        jadwalAmbil: data.jadwalAmbil || "",
         waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
       });
       console.log(`[ONLINE] Pesanan ${kodePesanan || 'guest'} berhasil dikirim ke kasir`);
