@@ -1,4 +1,4 @@
-const CACHE_NAME = "warkop-v1";
+const CACHE_NAME = "soluna-v3";
 const PRECACHE = ["/app", "/api/menu", "/icon-192.svg", "/icon-512.svg"];
 
 // Install: cache halaman utama
