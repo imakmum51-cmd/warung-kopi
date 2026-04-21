@@ -611,15 +611,9 @@
             <button class="ukuran-btn glass-card rounded-xl py-2.5 text-center border border-white/5 transition-all" data-ukuran="Large" onclick="pilihUkuran('Large')"><div class="text-2xl mb-0.5">🥤</div><span class="text-white font-600 text-[11px]">Large</span></button>
           </div>
         </div>
-        <div class="mb-4">
+        <div class="mb-4" id="popup-topping-wrap">
           <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Topping (opsional)</p>
-          <div class="flex flex-wrap gap-2">
-            <button class="topping-btn glass-card rounded-full px-3 py-1.5 text-[11px] font-600 text-white/60 border border-white/5 transition-all" data-topping="Extra Shot" onclick="toggleTopping(this)">☕ Extra Shot</button>
-            <button class="topping-btn glass-card rounded-full px-3 py-1.5 text-[11px] font-600 text-white/60 border border-white/5 transition-all" data-topping="Boba" onclick="toggleTopping(this)">🧋 Boba</button>
-            <button class="topping-btn glass-card rounded-full px-3 py-1.5 text-[11px] font-600 text-white/60 border border-white/5 transition-all" data-topping="Jelly" onclick="toggleTopping(this)">🍮 Jelly</button>
-            <button class="topping-btn glass-card rounded-full px-3 py-1.5 text-[11px] font-600 text-white/60 border border-white/5 transition-all" data-topping="Whip Cream" onclick="toggleTopping(this)">🍦 Whip Cream</button>
-            <button class="topping-btn glass-card rounded-full px-3 py-1.5 text-[11px] font-600 text-white/60 border border-white/5 transition-all" data-topping="Keju" onclick="toggleTopping(this)">🧀 Keju</button>
-          </div>
+          <div class="flex flex-wrap gap-2" id="popup-topping-list"></div>
         </div>
         <div class="mb-5">
           <p class="text-white/50 text-xs font-600 uppercase tracking-wider mb-2">Catatan</p>
@@ -926,6 +920,13 @@
       function pilihTipe(t) { tipePesanan = t; document.querySelectorAll(".tipe-btn").forEach(b => b.classList.toggle("active", b.dataset.tipe === t)); }
       function pilihMetode(m) { metodePembayaran = m; document.querySelectorAll(".metode-btn").forEach(b => b.classList.toggle("active", b.dataset.metode === m)); }
 
+      const TOPPING_OPTIONS = {
+        kopi:    [ {n:"Extra Shot",e:"☕"}, {n:"Boba",e:"🧋"}, {n:"Jelly",e:"🍮"}, {n:"Whip Cream",e:"🍦"}, {n:"Keju",e:"🧀"}, {n:"Coklat Bubuk",e:"🍫"} ],
+        minuman: [ {n:"Boba",e:"🧋"}, {n:"Jelly",e:"🍮"}, {n:"Whip Cream",e:"🍦"}, {n:"Es Extra",e:"🧊"}, {n:"Lemon",e:"🍋"} ],
+        makanan: [ {n:"Sambal Extra",e:"🌶️"}, {n:"Telur",e:"🥚"}, {n:"Keju",e:"🧀"}, {n:"Ayam Suwir",e:"🍗"}, {n:"Jagung",e:"🌽"}, {n:"Kerupuk",e:"🍘"} ],
+        snack:   [ {n:"Keju",e:"🧀"}, {n:"Coklat",e:"🍫"}, {n:"Madu",e:"🍯"}, {n:"Kacang",e:"🥜"} ],
+      };
+
       let popupItemId = null, popupUkuran = "Regular", popupToppings = [];
       function addToCart(id) {
         const item = menuData.find(m => m.id === id);
@@ -936,8 +937,21 @@
         document.getElementById("popup-harga").textContent = `Rp ${item.harga.toLocaleString("id-ID")}`;
         document.getElementById("popup-catatan").value = "";
         document.querySelectorAll(".ukuran-btn").forEach(b => b.classList.toggle("active", b.dataset.ukuran === "Regular"));
-        document.querySelectorAll(".topping-btn").forEach(b => b.classList.remove("active"));
         document.getElementById("popup-ukuran-wrap").style.display = ["kopi","minuman"].includes(item.kategori) ? "" : "none";
+
+        // Render toppings sesuai kategori menu
+        const toppings = TOPPING_OPTIONS[item.kategori] || [];
+        const toppingWrap = document.getElementById("popup-topping-wrap");
+        const toppingList = document.getElementById("popup-topping-list");
+        if (toppings.length === 0) {
+          toppingWrap.style.display = "none";
+        } else {
+          toppingWrap.style.display = "";
+          toppingList.innerHTML = toppings.map(t =>
+            `<button class="topping-btn glass-card rounded-full px-3 py-1.5 text-[11px] font-600 text-white/60 border border-white/5 transition-all" data-topping="${t.n}" onclick="toggleTopping(this)">${t.e} ${t.n}</button>`
+          ).join("");
+        }
+
         const popup = document.getElementById("item-popup"), panel = document.getElementById("item-popup-panel");
         popup.style.opacity = "1"; popup.style.pointerEvents = "auto"; panel.style.transform = "translateY(0)";
       }
