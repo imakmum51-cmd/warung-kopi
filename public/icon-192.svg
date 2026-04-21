@@ -1,39 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f59e0b"/>
-      <stop offset="0.55" stop-color="#db2777"/>
-      <stop offset="1" stop-color="#4c1d95"/>
-    </linearGradient>
-    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fde68a"/>
-      <stop offset="1" stop-color="#f59e0b"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#fde68a" stop-opacity="0.6"/>
-      <stop offset="1" stop-color="#fde68a" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="192" height="192" rx="38" fill="url(#bg)"/>
-  <circle cx="96" cy="78" r="54" fill="url(#glow)"/>
-  <circle cx="96" cy="78" r="30" fill="url(#sun)"/>
-  <path d="M 110 60 A 28 28 0 1 0 110 96 A 22 22 0 1 1 110 60 Z" fill="#1e1b4b" opacity="0.85"/>
-  <g stroke="#fde68a" stroke-width="2.2" stroke-linecap="round" opacity="0.9">
-    <line x1="96" y1="32" x2="96" y2="40"/>
-    <line x1="96" y1="116" x2="96" y2="124"/>
-    <line x1="54" y1="78" x2="62" y2="78"/>
-    <line x1="130" y1="78" x2="138" y2="78"/>
-    <line x1="66" y1="48" x2="72" y2="54"/>
-    <line x1="120" y1="102" x2="126" y2="108"/>
-    <line x1="126" y1="48" x2="120" y2="54"/>
-    <line x1="72" y1="102" x2="66" y2="108"/>
+  <!-- Background rounded square (cream) -->
+  <rect width="192" height="192" rx="38" fill="#f0e6d2"/>
+
+  <!-- Outer brown ring -->
+  <circle cx="96" cy="96" r="78" fill="none" stroke="#3e2618" stroke-width="3.5"/>
+
+  <!-- Inner thin ring with dotted stars -->
+  <circle cx="96" cy="96" r="70" fill="none" stroke="#3e2618" stroke-width="1.2"/>
+  <g fill="#3e2618">
+    <circle cx="96" cy="26" r="1.4"/>
+    <circle cx="166" cy="96" r="1.4"/>
+    <circle cx="96" cy="166" r="1.4"/>
+    <circle cx="26" cy="96" r="1.4"/>
+    <circle cx="146" cy="46" r="1.1"/>
+    <circle cx="146" cy="146" r="1.1"/>
+    <circle cx="46" cy="146" r="1.1"/>
+    <circle cx="46" cy="46" r="1.1"/>
   </g>
-  <path d="M 58 138 L 118 138 L 114 166 Q 114 172 108 172 L 68 172 Q 62 172 62 166 Z" fill="#fef3c7"/>
-  <path d="M 118 144 Q 138 146 138 156 Q 138 166 118 164 Z" fill="none" stroke="#fef3c7" stroke-width="4" stroke-linejoin="round"/>
-  <ellipse cx="88" cy="141" rx="28" ry="4" fill="#7c2d12" opacity="0.55"/>
-  <g stroke="#fef3c7" stroke-width="2.4" stroke-linecap="round" fill="none" opacity="0.75">
-    <path d="M 76 128 Q 72 122 76 116 Q 80 110 76 104"/>
-    <path d="M 96 128 Q 92 122 96 116 Q 100 110 96 104"/>
-    <path d="M 116 128 Q 112 122 116 116 Q 120 110 116 104"/>
+
+  <!-- Inner cream circle (clean face) -->
+  <circle cx="96" cy="96" r="62" fill="#f7efdc"/>
+
+  <!-- Sun rays (8 triangular spokes) -->
+  <g fill="#c2502a">
+    <polygon points="96,40 91,70 101,70"/>
+    <polygon points="96,152 91,122 101,122"/>
+    <polygon points="40,96 70,91 70,101"/>
+    <polygon points="152,96 122,91 122,101"/>
+    <polygon points="56,56 82,78 78,82"/>
+    <polygon points="136,56 110,78 114,82"/>
+    <polygon points="56,136 82,114 78,110"/>
+    <polygon points="136,136 110,114 114,110"/>
   </g>
+
+  <!-- Navy moon (left, overlapping) -->
+  <circle cx="83" cy="96" r="22" fill="#1e2f50"/>
+  <!-- Stars on moon -->
+  <g fill="#fde68a">
+    <circle cx="88" cy="88" r="1.2"/>
+    <circle cx="76" cy="96" r="0.9"/>
+    <circle cx="85" cy="104" r="1.1"/>
+    <circle cx="80" cy="90" r="0.7"/>
+  </g>
+
+  <!-- Orange sun (right, overlapping moon) -->
+  <circle cx="104" cy="96" r="19" fill="#c2502a"/>
+  <!-- Dashed inner ring on sun -->
+  <circle cx="104" cy="96" r="14" fill="none" stroke="#f7efdc" stroke-width="0.8" stroke-dasharray="2.5,2"/>
 </svg>
