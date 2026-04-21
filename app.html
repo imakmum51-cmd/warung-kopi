@@ -9,7 +9,7 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/icon-192.svg" />
     <link rel="apple-touch-icon" href="/icon-192.svg" />
-    <title>Warkop Urban</title>
+    <title>Cafe Soluna</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -123,16 +123,8 @@
         <div id="login-card" class="login-card rounded-3xl p-8 text-center">
           <!-- Logo -->
           <div class="mb-8">
-            <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mx-auto mb-4" style="box-shadow: 0 8px 30px rgba(234,88,12,0.3);">
-              <svg class="w-11 h-11" viewBox="0 0 56 56" fill="none">
-                <g><path d="M18 16 Q18 10 21 7" stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M28 16 Q28 9 31 5" stroke="rgba(255,255,255,0.7)" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M38 16 Q38 10 41 7" stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round" fill="none"/></g>
-                <rect x="10" y="19" width="32" height="22" rx="6" fill="rgba(255,255,255,0.95)"/>
-                <path d="M42 24 h5 a4 4 0 0 1 0 8 h-5" stroke="rgba(255,255,255,0.9)" stroke-width="3" fill="none" stroke-linecap="round"/>
-                <ellipse cx="26" cy="48" rx="14" ry="3" fill="rgba(255,255,255,0.25)"/>
-              </svg>
-            </div>
-            <h1 class="text-2xl font-900"><span class="gradient-text">Warkop Urban</span></h1>
-            <p class="text-white/40 text-sm mt-1">Pesan Online</p>
+            <img src="/public/soluna.png" alt="Cafe Soluna" class="w-56 max-w-full h-auto mx-auto mb-3 drop-shadow-xl" />
+            <p class="text-white/40 text-sm">Pesan Online</p>
           </div>
 
           <!-- Tab Login / Daftar -->
@@ -204,7 +196,7 @@
         <!-- Install App Button (shown on login screen) -->
         <div id="login-install-btn" class="hidden mt-4">
           <button onclick="installApp()" class="w-full glass-card rounded-2xl py-3.5 px-5 flex items-center justify-center gap-3 border border-orange-500/20 hover:border-orange-500/40 transition-all">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-xs flex-shrink-0">WU</div>
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-xs flex-shrink-0">CS</div>
             <div class="flex-1 text-left">
               <p class="text-white font-700 text-sm">Install Aplikasi</p>
               <p class="text-white/40 text-[10px]">Akses cepat dari home screen HP</p>
@@ -221,9 +213,9 @@
     <!-- Install Banner -->
     <div class="install-banner" id="install-banner">
       <div class="mx-4 mb-4 glass-card rounded-2xl p-4 flex items-center gap-3" style="background:rgba(234,88,12,0.15); border-color:rgba(234,88,12,0.3);">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-lg flex-shrink-0">WU</div>
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-lg flex-shrink-0">CS</div>
         <div class="flex-1 min-w-0">
-          <p class="text-white font-700 text-sm">Install Warkop Urban</p>
+          <p class="text-white font-700 text-sm">Install Cafe Soluna</p>
           <p class="text-white/40 text-xs">Akses cepat dari home screen</p>
         </div>
         <button onclick="installApp()" class="btn-primary px-4 py-2 rounded-xl text-white font-700 text-xs flex-shrink-0">Install</button>
@@ -238,7 +230,7 @@
       <header class="sticky top-0 z-50 px-4 pt-4 pb-3" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-sm" id="home-avatar">WU</div>
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-sm" id="home-avatar">CS</div>
             <div>
               <p class="text-white/40 text-[11px] font-500">Selamat datang,</p>
               <h1 class="text-white font-800 text-base leading-tight" id="home-greeting">Pelanggan</h1>
@@ -535,7 +527,7 @@
         </div>
       </div>
       <h2 class="text-white text-2xl font-800 mb-2">Pesanan Berhasil!</h2>
-      <p class="text-white/50 text-sm text-center max-w-[260px] leading-relaxed" id="success-desc">Pesanan Anda telah dikirim ke Warkop Urban. Kami akan segera memprosesnya.</p>
+      <p class="text-white/50 text-sm text-center max-w-[260px] leading-relaxed" id="success-desc">Pesanan Anda telah dikirim ke Cafe Soluna. Kami akan segera memprosesnya.</p>
       <div id="success-qris" class="hidden mt-5 flex flex-col items-center">
         <div class="bg-white p-3 rounded-3xl shadow-2xl shadow-black/40">
           <img src="/qris.png.png" class="w-52 h-52 object-contain" alt="QRIS" />
@@ -601,6 +593,20 @@
     </div>
 
     <!-- Order Ready Popup -->
+    <!-- Overlay: Pesanan Sedang Diproses -->
+    <div class="fixed inset-0 z-[250] flex items-center justify-center p-6 opacity-0 pointer-events-none" id="order-processing-overlay" style="transition:opacity 0.4s ease; background:rgba(5,5,5,0.92); backdrop-filter:blur(20px);">
+      <div class="flex flex-col items-center text-center">
+        <div class="relative mb-6">
+          <div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center"><span class="text-5xl" style="animation:spin 2s linear infinite; display:inline-block;">🔥</span></div>
+          <div class="absolute inset-0 w-24 h-24 rounded-full border-2 border-blue-400/40" style="animation:pulseOut 1.2s ease-out 0.3s infinite;"></div>
+        </div>
+        <h2 class="text-white text-2xl font-800 mb-2">Pesanan Diproses!</h2>
+        <p class="text-white/50 text-sm text-center max-w-[280px] leading-relaxed mb-6">Pesanan Anda sedang disiapkan oleh barista. Mohon tunggu sebentar ya!</p>
+        <button onclick="closeOrderProcessing()" class="px-8 py-3 rounded-2xl text-white font-700 text-sm" style="background:linear-gradient(135deg,#2563eb,#06b6d4);">OK, Siap!</button>
+      </div>
+    </div>
+
+    <!-- Overlay: Pesanan Siap -->
     <div class="fixed inset-0 z-[250] flex items-center justify-center p-6 opacity-0 pointer-events-none" id="order-ready-overlay" style="transition:opacity 0.4s ease; background:rgba(5,5,5,0.92); backdrop-filter:blur(20px);">
       <div class="flex flex-col items-center text-center">
         <div class="relative mb-6">
@@ -976,6 +982,10 @@
       // ============================
       function submitOrder() {
         if (isSubmitting || getCartCount() === 0) return;
+        if (!socket.connected) {
+          alert("Tidak terhubung ke server. Periksa koneksi internet Anda dan coba lagi.");
+          return;
+        }
         const nama = loggedInUser?.nama || document.getElementById("input-nama").value.trim();
         const alamat = document.getElementById("input-alamat-cart").value.trim() || loggedInUser?.alamat || "";
         const telp = loggedInUser?.telp || document.getElementById("input-telp").value.trim();
@@ -1009,7 +1019,7 @@
             document.getElementById("success-total").textContent = `Rp ${finalTotal.toLocaleString("id-ID")}`;
             const qris = document.getElementById("success-qris");
             if (metodePembayaran === "QRIS") { qris.classList.remove("hidden"); qris.classList.add("flex"); document.getElementById("success-desc").textContent = "Silakan scan QRIS untuk menyelesaikan pembayaran."; }
-            else { qris.classList.add("hidden"); qris.classList.remove("flex"); document.getElementById("success-desc").textContent = lastKodePesanan ? `Kode pesanan: ${lastKodePesanan}. Pesanan Anda sedang diproses!` : "Pesanan Anda telah dikirim ke Warkop Urban. Kami akan segera memprosesnya."; }
+            else { qris.classList.add("hidden"); qris.classList.remove("flex"); document.getElementById("success-desc").textContent = lastKodePesanan ? `Kode pesanan: ${lastKodePesanan}. Pesanan Anda sedang diproses!` : "Pesanan Anda telah dikirim ke Cafe Soluna. Kami akan segera memprosesnya."; }
             document.getElementById("success-overlay").classList.add("show");
           }, 300);
         }, 800);
@@ -1046,6 +1056,28 @@
         showOrderReady();
       });
 
+      function showOrderProcessing() {
+        const o = document.getElementById("order-processing-overlay");
+        o.style.opacity = "1"; o.style.pointerEvents = "auto";
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          [523,659,784].forEach((f,i) => {
+            const osc = ctx.createOscillator(), g = ctx.createGain();
+            osc.connect(g); g.connect(ctx.destination); osc.type="sine"; osc.frequency.value=f;
+            g.gain.setValueAtTime(0.4,ctx.currentTime+i*0.2); g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+i*0.2+0.35);
+            osc.start(ctx.currentTime+i*0.2); osc.stop(ctx.currentTime+i*0.2+0.35);
+          });
+        } catch(e){}
+        if ("Notification" in window && Notification.permission === "granted") {
+          try { new Notification("🔥 Pesanan Diproses! — Cafe Soluna", { body: "Pesanan Anda sedang disiapkan!", icon: "/icon-192.svg", tag: "order-processing" }); } catch(e){}
+        }
+      }
+      function closeOrderProcessing() {
+        const o = document.getElementById("order-processing-overlay");
+        o.style.opacity = "0"; o.style.pointerEvents = "none";
+      }
+
       function showOrderReady() {
         const o = document.getElementById("order-ready-overlay");
         o.style.opacity = "1"; o.style.pointerEvents = "auto";
@@ -1060,7 +1092,7 @@
           });
         } catch(e){}
         if ("Notification" in window && Notification.permission === "granted") {
-          try { new Notification("🎉 Pesanan Siap! — Warkop Urban", { body: "Pesanan Anda sudah selesai!", icon: "/icon-192.svg", tag: "order-ready" }); } catch(e){}
+          try { new Notification("🎉 Pesanan Siap! — Cafe Soluna", { body: "Pesanan Anda sudah selesai!", icon: "/icon-192.svg", tag: "order-ready" }); } catch(e){}
         }
       }
       function closeOrderReady() {
@@ -1150,17 +1182,22 @@
         }).join("");
       }
 
+      // Track semua kode pesanan dari sesi ini
+      let myKodePesanan = new Set();
+
       // Listen for real-time order status changes
       socket.on("order-status-changed", (data) => {
-        if (!loggedInUser || data.pelangganId !== loggedInUser.id) return;
+        const isMyOrder = (loggedInUser && data.pelangganId === loggedInUser.id) || myKodePesanan.has(data.kodePesanan);
+        if (!isMyOrder) return;
         const idx = pesananList.findIndex(p => p.id === data.pesananId);
         if (idx !== -1) { pesananList[idx].status = data.status; if (currentPage === "pesanan") renderPesanan(); }
         // Show notification
+        if (data.status === "diproses") showOrderProcessing();
         if (data.status === "siap") showOrderReady();
       });
 
       socket.on("order-confirmed", (data) => {
-        if (data.kodePesanan) lastKodePesanan = data.kodePesanan;
+        if (data.kodePesanan) { lastKodePesanan = data.kodePesanan; myKodePesanan.add(data.kodePesanan); }
       });
 
       // ============================

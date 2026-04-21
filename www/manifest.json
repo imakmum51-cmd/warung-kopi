@@ -1,11 +1,11 @@
 {
-  "name": "Warkop Urban - Pesan Online",
-  "short_name": "Warkop Urban",
-  "description": "Pesan makanan & minuman Warkop Urban dari mana saja",
+  "name": "Cafe Soluna - Pesan Online",
+  "short_name": "Cafe Soluna",
+  "description": "Pesan makanan & minuman Cafe Soluna dari mana saja",
   "start_url": "/app",
   "display": "standalone",
   "background_color": "#050505",
-  "theme_color": "#ea580c",
+  "theme_color": "#f59e0b",
   "orientation": "portrait",
   "icons": [
     {

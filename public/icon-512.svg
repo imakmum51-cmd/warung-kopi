@@ -1,5 +1,39 @@
-<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'>
-    <defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ea580c'/><stop offset='1' stop-color='%23dc2626'/></linearGradient></defs>
-    <rect width='512' height='512' rx='102.4' fill='url(%23g)'/>
-    <text x='50%25' y='54%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-weight='900' font-size='179.2' fill='white'>WU</text>
-  </svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f59e0b"/>
+      <stop offset="0.55" stop-color="#db2777"/>
+      <stop offset="1" stop-color="#4c1d95"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fde68a" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#fde68a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="102" fill="url(#bg)"/>
+  <circle cx="256" cy="208" r="144" fill="url(#glow)"/>
+  <circle cx="256" cy="208" r="80" fill="url(#sun)"/>
+  <path d="M 293 160 A 75 75 0 1 0 293 256 A 58 58 0 1 1 293 160 Z" fill="#1e1b4b" opacity="0.85"/>
+  <g stroke="#fde68a" stroke-width="6" stroke-linecap="round" opacity="0.9">
+    <line x1="256" y1="88" x2="256" y2="108"/>
+    <line x1="256" y1="308" x2="256" y2="328"/>
+    <line x1="136" y1="208" x2="156" y2="208"/>
+    <line x1="356" y1="208" x2="376" y2="208"/>
+    <line x1="172" y1="124" x2="186" y2="138"/>
+    <line x1="326" y1="278" x2="340" y2="292"/>
+    <line x1="340" y1="124" x2="326" y2="138"/>
+    <line x1="186" y1="278" x2="172" y2="292"/>
+  </g>
+  <path d="M 152 368 L 312 368 L 302 442 Q 302 460 284 460 L 180 460 Q 162 460 162 442 Z" fill="#fef3c7"/>
+  <path d="M 312 384 Q 368 388 368 416 Q 368 444 312 440 Z" fill="none" stroke="#fef3c7" stroke-width="12" stroke-linejoin="round"/>
+  <ellipse cx="232" cy="376" rx="76" ry="10" fill="#7c2d12" opacity="0.55"/>
+  <g stroke="#fef3c7" stroke-width="6.5" stroke-linecap="round" fill="none" opacity="0.75">
+    <path d="M 200 342 Q 190 324 200 308 Q 210 292 200 276"/>
+    <path d="M 256 342 Q 246 324 256 308 Q 266 292 256 276"/>
+    <path d="M 312 342 Q 302 324 312 308 Q 322 292 312 276"/>
+  </g>
+</svg>

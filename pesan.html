@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#050505" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Warkop Urban - Pesan</title>
+    <title>Cafe Soluna - Pesan</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/icon-192.svg" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -446,7 +446,7 @@
         <div class="flex items-center justify-between mb-3">
           <div>
             <h1 class="text-xl font-800">
-              <span class="gradient-text">Warkop Urban</span>
+              <span class="gradient-text">Cafe Soluna</span>
             </h1>
             <p class="text-xs text-white/40 mt-0.5">Self-Order Menu</p>
           </div>
@@ -1493,7 +1493,7 @@
         // Browser Push Notification (muncul meskipun di luar web)
         if ("Notification" in window && Notification.permission === "granted") {
           try {
-            const notif = new Notification("🎉 Pesanan Siap! — Warkop Urban", {
+            const notif = new Notification("🎉 Pesanan Siap! — Cafe Soluna", {
               body: `Pesanan Meja ${mejaNumber} sudah selesai disiapkan. Silakan ambil di kasir!`,
               icon: "/qris.png.png",
               tag: "order-ready-" + mejaNumber,

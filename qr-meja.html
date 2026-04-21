@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR Code Meja - Warkop Urban</title>
+  <title>QR Code Meja - Cafe Soluna</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
@@ -110,7 +110,7 @@
 <body>
 
   <div class="control-bar">
-    <h1>&#9749; Warkop <span>Urban</span></h1>
+    <h1>&#9749; Cafe <span>Soluna</span></h1>
     <span id="url-mode" style="font-size:11px;font-weight:800;background:#ecfdf5;color:#059669;padding:4px 12px;border-radius:50px;"></span>
     <div style="flex:1"></div>
     <label>Jumlah Meja:</label>
@@ -167,7 +167,7 @@
         card.className = 'qr-card';
         card.innerHTML = `
           <div class="coffee-icon">&#9749;</div>
-          <div class="shop-name">Warkop <span>Urban</span></div>
+          <div class="shop-name">Cafe <span>Soluna</span></div>
           <div class="meja-badge">&#127834; MEJA ${i}</div>
           <div class="qr-wrapper"><div id="qr-${i}"></div></div>
           <div class="scan-text">Scan untuk pesan</div>

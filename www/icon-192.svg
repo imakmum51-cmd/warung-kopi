@@ -1,5 +1,39 @@
-<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192'>
-    <defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ea580c'/><stop offset='1' stop-color='%23dc2626'/></linearGradient></defs>
-    <rect width='192' height='192' rx='38.400000000000006' fill='url(%23g)'/>
-    <text x='50%25' y='54%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-weight='900' font-size='67.19999999999999' fill='white'>WU</text>
-  </svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f59e0b"/>
+      <stop offset="0.55" stop-color="#db2777"/>
+      <stop offset="1" stop-color="#4c1d95"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fde68a" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#fde68a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="192" height="192" rx="38" fill="url(#bg)"/>
+  <circle cx="96" cy="78" r="54" fill="url(#glow)"/>
+  <circle cx="96" cy="78" r="30" fill="url(#sun)"/>
+  <path d="M 110 60 A 28 28 0 1 0 110 96 A 22 22 0 1 1 110 60 Z" fill="#1e1b4b" opacity="0.85"/>
+  <g stroke="#fde68a" stroke-width="2.2" stroke-linecap="round" opacity="0.9">
+    <line x1="96" y1="32" x2="96" y2="40"/>
+    <line x1="96" y1="116" x2="96" y2="124"/>
+    <line x1="54" y1="78" x2="62" y2="78"/>
+    <line x1="130" y1="78" x2="138" y2="78"/>
+    <line x1="66" y1="48" x2="72" y2="54"/>
+    <line x1="120" y1="102" x2="126" y2="108"/>
+    <line x1="126" y1="48" x2="120" y2="54"/>
+    <line x1="72" y1="102" x2="66" y2="108"/>
+  </g>
+  <path d="M 58 138 L 118 138 L 114 166 Q 114 172 108 172 L 68 172 Q 62 172 62 166 Z" fill="#fef3c7"/>
+  <path d="M 118 144 Q 138 146 138 156 Q 138 166 118 164 Z" fill="none" stroke="#fef3c7" stroke-width="4" stroke-linejoin="round"/>
+  <ellipse cx="88" cy="141" rx="28" ry="4" fill="#7c2d12" opacity="0.55"/>
+  <g stroke="#fef3c7" stroke-width="2.4" stroke-linecap="round" fill="none" opacity="0.75">
+    <path d="M 76 128 Q 72 122 76 116 Q 80 110 76 104"/>
+    <path d="M 96 128 Q 92 122 96 116 Q 100 110 96 104"/>
+    <path d="M 116 128 Q 112 122 116 116 Q 120 110 116 104"/>
+  </g>
+</svg>

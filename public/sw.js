@@ -36,7 +36,7 @@ self.addEventListener("fetch", (event) => {
 
 // Push notification
 self.addEventListener("push", (event) => {
-  let data = { title: "Warkop Urban", body: "Ada notifikasi baru!" };
+  let data = { title: "Cafe Soluna", body: "Ada notifikasi baru!" };
   try { data = event.data.json(); } catch (e) {}
   event.waitUntil(
     self.registration.showNotification(data.title, {

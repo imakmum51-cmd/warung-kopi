@@ -1,7 +1,9 @@
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
-const io = require("socket.io")(http);
+const io = require("socket.io")(http, {
+  cors: { origin: "*", methods: ["GET", "POST"] },
+});
 const path = require("path");
 const os = require("os");
 const Database = require("better-sqlite3");
@@ -39,9 +41,10 @@ const HAK_AKSES = {
     "kelola_menu",
     "kelola_stok",
     "manajemen_user",
-    "setting",
+    "setting_toko",
     "void",
     "reset_omzet",
+    "audit_log",
   ],
   owner: [
     "transaksi",
@@ -50,9 +53,8 @@ const HAK_AKSES = {
     "kelola_menu",
     "kelola_stok",
     "void",
-    "reset_omzet",
   ],
-  kasir: ["transaksi", "laporan_harian"],
+  kasir: ["transaksi", "laporan_harian", "void"],
   pembeli: [], // hanya layar tampilan, tidak ada akses socket aktif
 };
 
@@ -135,14 +137,21 @@ try {
   db.exec("ALTER TABLE pelanggan ADD COLUMN alamat TEXT DEFAULT ''");
 } catch (e) {}
 
-// Tabel pesanan online (tracking pesanan dari app)
+// Migrasi: tambah kolom catatan, diskon, diskon_info di transaksi
+try { db.exec("ALTER TABLE transaksi ADD COLUMN catatan TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE transaksi ADD COLUMN diskon INTEGER DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE transaksi ADD COLUMN diskon_info TEXT DEFAULT ''"); } catch(e) {}
+
+// Tabel pesanan online & QR meja (tracking semua pesanan masuk)
 db.exec(`
   CREATE TABLE IF NOT EXISTS pesanan_online (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    pelanggan_id INTEGER NOT NULL,
+    pelanggan_id INTEGER DEFAULT 0,
     nama TEXT NOT NULL,
     alamat TEXT DEFAULT '',
     telp TEXT DEFAULT '',
+    meja TEXT DEFAULT '',
+    sumber TEXT DEFAULT 'online',
     items TEXT NOT NULL,
     total INTEGER NOT NULL,
     diskon INTEGER DEFAULT 0,
@@ -156,6 +165,47 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
+
+// Migrasi: tambah kolom meja & sumber jika belum ada, dan ubah pelanggan_id nullable
+try {
+  const tableInfo = db.pragma("table_info(pesanan_online)");
+  const hasMeja = tableInfo.find(c => c.name === "meja");
+  const hasSumber = tableInfo.find(c => c.name === "sumber");
+  const pelangganCol = tableInfo.find(c => c.name === "pelanggan_id");
+  const needMigrate = !hasMeja || !hasSumber || (pelangganCol && pelangganCol.notnull === 1);
+  if (needMigrate) {
+    db.exec(`
+      CREATE TABLE pesanan_online_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pelanggan_id INTEGER DEFAULT 0,
+        nama TEXT NOT NULL,
+        alamat TEXT DEFAULT '',
+        telp TEXT DEFAULT '',
+        meja TEXT DEFAULT '',
+        sumber TEXT DEFAULT 'online',
+        items TEXT NOT NULL,
+        total INTEGER NOT NULL,
+        diskon INTEGER DEFAULT 0,
+        promo_kode TEXT DEFAULT '',
+        metode TEXT NOT NULL,
+        tipe TEXT DEFAULT 'Dine In',
+        catatan TEXT DEFAULT '',
+        status TEXT DEFAULT 'menunggu',
+        kode_pesanan TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    // Copy existing data (old columns)
+    const oldCols = tableInfo.map(c => c.name);
+    const commonCols = oldCols.filter(c => ['id','pelanggan_id','nama','alamat','telp','items','total','diskon','promo_kode','metode','tipe','catatan','status','kode_pesanan','created_at','updated_at'].includes(c));
+    if (commonCols.length > 0) {
+      db.exec(`INSERT INTO pesanan_online_new (${commonCols.join(',')}) SELECT ${commonCols.join(',')} FROM pesanan_online;`);
+    }
+    db.exec(`DROP TABLE pesanan_online; ALTER TABLE pesanan_online_new RENAME TO pesanan_online;`);
+    console.log("[DB] Migrasi pesanan_online: tambah kolom meja & sumber, pelanggan_id nullable");
+  }
+} catch(e) { /* tabel baru, tidak perlu migrasi */ }
 
 // Tabel favorit menu pelanggan
 db.exec(`
@@ -215,6 +265,39 @@ db.exec(`
     total_omzet INTEGER DEFAULT 0,
     status TEXT DEFAULT 'aktif',
     FOREIGN KEY (karyawan_id) REFERENCES karyawan(id)
+  );
+`);
+
+// Tabel setting toko
+db.exec(`
+  CREATE TABLE IF NOT EXISTS setting_toko (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+`);
+
+// Seed setting defaults
+const settingDefaults = {
+  nama_toko: "Cafe Soluna",
+  alamat: "Jl. Contoh No. 1",
+  telp: "08123456789",
+  footer_struk: "Terima kasih telah berkunjung!",
+  target_harian: "500000",
+};
+const seedSetting = db.prepare("INSERT OR IGNORE INTO setting_toko (key, value) VALUES (?, ?)");
+Object.entries(settingDefaults).forEach(([k, v]) => seedSetting.run(k, v));
+db.prepare("UPDATE setting_toko SET value = ? WHERE key = 'nama_toko' AND value = 'Warkop Urban'").run("Cafe Soluna");
+
+// Tabel audit log
+db.exec(`
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    waktu DATETIME DEFAULT CURRENT_TIMESTAMP,
+    user TEXT NOT NULL,
+    role TEXT NOT NULL,
+    aksi TEXT NOT NULL,
+    detail TEXT DEFAULT '',
+    ip TEXT DEFAULT ''
   );
 `);
 
@@ -293,7 +376,7 @@ if (opsiCount.c === 0) {
 
 // Prepared statements
 const insertTransaksi = db.prepare(
-  "INSERT INTO transaksi (tanggal, kasir, menu, qty, total, metode) VALUES (?, ?, ?, ?, ?, ?)",
+  "INSERT INTO transaksi (tanggal, kasir, menu, qty, total, metode, catatan, diskon, diskon_info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 );
 const getAllTransaksi = db.prepare("SELECT * FROM transaksi ORDER BY id ASC");
 const getOmzet = db.prepare(
@@ -316,6 +399,18 @@ const kurangiStok = db.prepare(
 );
 const tambahStok = db.prepare("UPDATE menu SET stok = stok + ? WHERE id = ?");
 
+// Setting toko
+const getAllSettings = db.prepare("SELECT * FROM setting_toko");
+const upsertSetting = db.prepare("INSERT OR REPLACE INTO setting_toko (key, value) VALUES (?, ?)");
+
+// Audit log
+const insertAuditLog = db.prepare(
+  "INSERT INTO audit_log (user, role, aksi, detail, ip) VALUES (?, ?, ?, ?, ?)"
+);
+function logAudit(user, role, aksi, detail, ip) {
+  try { insertAuditLog.run(user, role, aksi, detail, ip || ""); } catch(e) { console.error("Audit log error:", e); }
+}
+
 // Pelanggan
 const getAllPelanggan = db.prepare("SELECT * FROM pelanggan ORDER BY nama ASC");
 const getPelangganById = db.prepare("SELECT * FROM pelanggan WHERE id = ?");
@@ -336,12 +431,15 @@ const updatePelangganInfo = db.prepare(
 
 // Pesanan Online
 const insertPesananOnline = db.prepare(
-  "INSERT INTO pesanan_online (pelanggan_id, nama, alamat, telp, items, total, diskon, promo_kode, metode, tipe, catatan, status, kode_pesanan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  "INSERT INTO pesanan_online (pelanggan_id, nama, alamat, telp, meja, sumber, items, total, diskon, promo_kode, metode, tipe, catatan, status, kode_pesanan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 );
 const getPesananByPelanggan = db.prepare(
   "SELECT * FROM pesanan_online WHERE pelanggan_id = ? ORDER BY id DESC LIMIT 50"
 );
 const getPesananById = db.prepare("SELECT * FROM pesanan_online WHERE id = ?");
+const getPesananPending = db.prepare(
+  "SELECT * FROM pesanan_online WHERE status IN ('menunggu', 'diproses', 'siap') ORDER BY id DESC"
+);
 const updatePesananStatus = db.prepare(
   "UPDATE pesanan_online SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
 );
@@ -391,6 +489,9 @@ function getSemuaData() {
     Qty: r.qty,
     Total: r.total,
     Metode: r.metode,
+    Catatan: r.catatan || "",
+    Diskon: r.diskon || 0,
+    DiskonInfo: r.diskon_info || "",
   }));
   return { history, omzet };
 }
@@ -404,6 +505,9 @@ const insertBatch = db.transaction((items) => {
       item.Qty,
       item.Total,
       item.Metode,
+      item.Catatan || "",
+      item.Diskon || 0,
+      item.DiskonInfo || "",
     );
   }
 });
@@ -494,6 +598,7 @@ app.post("/api/menu", (req, res) => {
       "INSERT INTO menu (nama, harga, kategori, stok) VALUES (?, ?, ?, ?)",
     )
     .run(nama, parseInt(harga), kategori, parseInt(stok) || 50);
+  logAudit(req.headers["x-user"] || role, role, "tambah_menu", `${nama} — Rp ${harga} (${kategori})`);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
@@ -503,7 +608,9 @@ app.delete("/api/menu/:id", (req, res) => {
   if (!role || !HAK_AKSES[role]?.includes("kelola_menu")) {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
+  const menuInfo = db.prepare("SELECT nama FROM menu WHERE id = ?").get(req.params.id);
   db.prepare("DELETE FROM menu WHERE id = ?").run(req.params.id);
+  logAudit(req.headers["x-user"] || role, role, "hapus_menu", menuInfo?.nama || `ID: ${req.params.id}`);
   res.json({ success: true });
 });
 
@@ -517,7 +624,9 @@ app.put("/api/menu/:id/stok", (req, res) => {
   if (stok == null || stok < 0) {
     return res.status(400).json({ success: false, pesan: "Stok tidak valid." });
   }
+  const menuForLog = db.prepare("SELECT nama FROM menu WHERE id = ?").get(req.params.id);
   updateStok.run(stok, req.params.id);
+  logAudit(req.headers["x-user"] || role, role, "ubah_stok", `${menuForLog?.nama || 'ID:' + req.params.id} → stok: ${stok}`);
   res.json({ success: true });
 });
 
@@ -567,6 +676,7 @@ app.post("/api/karyawan", (req, res) => {
   const result = db
     .prepare("INSERT INTO karyawan (username, pin, role) VALUES (?, ?, ?)")
     .run(username.trim(), pin, finalRole);
+  logAudit(req.headers["x-user"] || role, role, "tambah_karyawan", `${username.trim()} (${finalRole})`);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
@@ -620,6 +730,7 @@ app.put("/api/karyawan/:id", (req, res) => {
       aktif ? 1 : 0,
       req.params.id,
     );
+  logAudit(req.headers["x-user"] || role, role, "ubah_karyawan", `${target.username} (ID:${req.params.id})`);
   res.json({ success: true });
 });
 
@@ -642,6 +753,7 @@ app.delete("/api/karyawan/:id", (req, res) => {
       .status(403)
       .json({ success: false, pesan: "Tidak bisa hapus akun admin." });
   db.prepare("DELETE FROM karyawan WHERE id = ?").run(req.params.id);
+  logAudit(req.headers["x-user"] || role, role, "hapus_karyawan", `${target.username} (${target.role})`);
   res.json({ success: true });
 });
 
@@ -868,18 +980,67 @@ app.post("/api/promo", (req, res) => {
 // ============================================
 // SHIFT API
 // ============================================
+// Jam operasional: Senin-Jumat 08:00-22:00, Sabtu-Minggu 08:00-00:00
+// Shift 1 (Pagi): 08:00 - 15:00, Shift 2 (Sore): 15:00 - tutup
 const SHIFT_CONFIG = [
-  { nama: "Pagi", mulai: "06:00", selesai: "15:00", icon: "🌅" },
-  { nama: "Sore", mulai: "15:00", selesai: "23:59", icon: "🌙" },
+  { nama: "Pagi", mulai: "08:00", selesai: "15:00", icon: "🌅" },
+  { nama: "Sore", mulai: "15:00", selesai: "22:00", icon: "🌙" },
 ];
+
+function getJamTutup() {
+  const hari = new Date().getDay(); // 0=Minggu, 6=Sabtu
+  return (hari === 0 || hari === 6) ? 0 : 22; // Sabtu-Minggu tutup jam 00:00, Senin-Jumat jam 22:00
+}
 
 function getShiftOtomatis() {
   const jam = new Date().getHours();
-  if (jam >= 6 && jam < 15) return "Pagi";
+  if (jam >= 8 && jam < 15) return "Pagi";
   return "Sore";
 }
 
+function getJamOperasional() {
+  const hari = new Date().getDay();
+  const isWeekend = (hari === 0 || hari === 6);
+  return {
+    buka: "08:00",
+    tutup: isWeekend ? "00:00" : "22:00",
+    label: isWeekend ? "Sabtu/Minggu: 08:00 - 00:00" : "Senin-Jumat: 08:00 - 22:00",
+    isWeekend,
+  };
+}
+
 // Clock In
+// Helper: konversi ISO UTC ke format lokal SQLite (YYYY-MM-DD HH:MM:SS)
+function isoToLocalSql(isoStr) {
+  if (!isoStr) return null;
+  const d = new Date(isoStr);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// Helper: hitung omzet shift dengan format waktu yang benar
+function hitungOmzetShift(username, clockInIso, clockOutIso) {
+  const clockInLocal = isoToLocalSql(clockInIso);
+  const clockOutLocal = isoToLocalSql(clockOutIso);
+  const whereClause = clockOutLocal
+    ? "kasir = ? AND created_at >= ? AND created_at <= ?"
+    : "kasir = ? AND created_at >= ?";
+  const params = clockOutLocal
+    ? [username, clockInLocal, clockOutLocal]
+    : [username, clockInLocal];
+  return db.prepare(
+    `SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as omzet FROM transaksi WHERE ${whereClause}`,
+  ).get(...params);
+}
+
+// Helper: close shift aktif dan hitung omzetnya
+function closeShift(shiftRow, clockOutIso) {
+  const trxData = hitungOmzetShift(shiftRow.username, shiftRow.clock_in, clockOutIso);
+  db.prepare(
+    "UPDATE shift_log SET clock_out = ?, total_transaksi = ?, total_omzet = ?, status = 'selesai' WHERE id = ?",
+  ).run(clockOutIso, trxData.trx, trxData.omzet, shiftRow.id);
+}
+
 app.post("/api/shift/clock-in", (req, res) => {
   const role = req.headers["x-role"];
   if (!role || !["admin", "owner", "kasir"].includes(role)) {
@@ -889,30 +1050,34 @@ app.post("/api/shift/clock-in", (req, res) => {
   if (!username)
     return res.status(400).json({ success: false, pesan: "Username wajib." });
 
+  const shiftSekarang = shift || getShiftOtomatis();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+
   // Cek apakah sudah clock in dan belum clock out
   const existing = db
     .prepare("SELECT * FROM shift_log WHERE username = ? AND status = 'aktif'")
     .get(username);
+
   if (existing) {
-    // Jika shift aktif dari hari lain, auto-close dan buat baru
-    const today = new Date().toISOString().split("T")[0];
-    const shiftDate = existing.clock_in.split("T")[0];
-    if (shiftDate === today) {
+    const clockInDate = new Date(existing.clock_in);
+    const clockInLocal = `${clockInDate.getFullYear()}-${String(clockInDate.getMonth()+1).padStart(2,"0")}-${String(clockInDate.getDate()).padStart(2,"0")}`;
+    const isSameDay = clockInLocal === todayLocal;
+    const isSameShift = existing.shift === shiftSekarang;
+
+    if (isSameDay && isSameShift) {
+      // Hari sama, shift sama → lanjutkan shift yang ada
       return res.json({
         success: true,
         pesan: "Sudah clock in.",
         shift: existing,
       });
     }
-    // Close shift lama
-    const trxOld = db
-      .prepare(
-        "SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as omzet FROM transaksi WHERE kasir = ? AND created_at >= ?",
-      )
-      .get(username, existing.clock_in);
-    db.prepare(
-      "UPDATE shift_log SET clock_out = ?, total_transaksi = ?, total_omzet = ?, status = 'selesai' WHERE id = ?",
-    ).run(new Date().toISOString(), trxOld.trx, trxOld.omzet, existing.id);
+
+    // Hari berbeda ATAU shift berbeda → close shift lama, buka shift baru
+    closeShift(existing, nowIso);
+    console.log(`[SHIFT] Auto close shift ${existing.shift} untuk ${username} (${isSameDay ? 'pergantian shift' : 'hari baru'})`);
   }
 
   const karyawan = db
@@ -923,17 +1088,16 @@ app.post("/api/shift/clock-in", (req, res) => {
       .status(404)
       .json({ success: false, pesan: "Karyawan tidak ditemukan." });
 
-  const shiftNama = shift || getShiftOtomatis();
-  const now = new Date().toISOString();
   const result = db
     .prepare(
       "INSERT INTO shift_log (karyawan_id, username, shift, clock_in, status) VALUES (?, ?, ?, ?, 'aktif')",
     )
-    .run(karyawan.id, username, shiftNama, now);
+    .run(karyawan.id, username, shiftSekarang, nowIso);
 
   const newShift = db
     .prepare("SELECT * FROM shift_log WHERE id = ?")
     .get(result.lastInsertRowid);
+  console.log(`[SHIFT] ${username} clock-in shift ${shiftSekarang}`);
   res.json({ success: true, shift: newShift });
 });
 
@@ -950,21 +1114,13 @@ app.post("/api/shift/clock-out", (req, res) => {
   if (!existing)
     return res.status(400).json({ success: false, pesan: "Belum clock in." });
 
-  // Hitung transaksi & omzet selama shift
-  const trxData = db
-    .prepare(
-      "SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as omzet FROM transaksi WHERE kasir = ? AND created_at >= ?",
-    )
-    .get(username, existing.clock_in);
-
-  const now = new Date().toISOString();
-  db.prepare(
-    "UPDATE shift_log SET clock_out = ?, total_transaksi = ?, total_omzet = ?, status = 'selesai' WHERE id = ?",
-  ).run(now, trxData.trx, trxData.omzet, existing.id);
+  const nowIso = new Date().toISOString();
+  closeShift(existing, nowIso);
 
   const updated = db
     .prepare("SELECT * FROM shift_log WHERE id = ?")
     .get(existing.id);
+  console.log(`[SHIFT] ${username} clock-out shift ${existing.shift}`);
   res.json({ success: true, shift: updated });
 });
 
@@ -1006,30 +1162,37 @@ app.get("/api/shift/riwayat", (req, res) => {
 
 // Get config shift
 app.get("/api/shift/config", (req, res) => {
-  res.json({ shifts: SHIFT_CONFIG, shiftSekarang: getShiftOtomatis() });
+  res.json({ shifts: SHIFT_CONFIG, shiftSekarang: getShiftOtomatis(), operasional: getJamOperasional() });
 });
 
 // Report shift detail per user
 app.get("/api/shift/report/:username", (req, res) => {
   const username = req.params.username;
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
   const tanggal = req.query.tanggal || today;
 
   // Riwayat shift hari ini/tanggal tertentu
-  const shifts = db
-    .prepare(
-      "SELECT * FROM shift_log WHERE username = ? AND date(clock_in, 'localtime') = ? ORDER BY clock_in DESC",
-    )
-    .all(username, tanggal);
+  // clock_in disimpan ISO UTC, konversi ke lokal untuk filter tanggal
+  const allShifts = db
+    .prepare("SELECT * FROM shift_log WHERE username = ? ORDER BY clock_in DESC")
+    .all(username);
+  const shifts = allShifts.filter((s) => {
+    const d = new Date(s.clock_in);
+    const localDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    return localDate === tanggal;
+  });
 
   // Detail per shift: breakdown tunai vs qris
   const report = shifts.map((s) => {
-    const whereClause = s.clock_out
+    const clockInLocal = isoToLocalSql(s.clock_in);
+    const clockOutLocal = isoToLocalSql(s.clock_out);
+    const whereClause = clockOutLocal
       ? "kasir = ? AND created_at >= ? AND created_at <= ?"
       : "kasir = ? AND created_at >= ?";
-    const params = s.clock_out
-      ? [username, s.clock_in, s.clock_out]
-      : [username, s.clock_in];
+    const params = clockOutLocal
+      ? [username, clockInLocal, clockOutLocal]
+      : [username, clockInLocal];
 
     const tunai = db
       .prepare(
@@ -1065,6 +1228,42 @@ app.get("/api/hak-akses/:role", (req, res) => {
   const hak = HAK_AKSES[req.params.role];
   if (!hak) return res.status(404).json({ success: false });
   res.json({ hakAkses: hak });
+});
+
+// Setting Toko API
+app.get("/api/setting-toko", (req, res) => {
+  const rows = getAllSettings.all();
+  const settings = {};
+  rows.forEach((r) => { settings[r.key] = r.value; });
+  res.json(settings);
+});
+
+app.post("/api/setting-toko", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!HAK_AKSES[role]?.includes("setting_toko"))
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  const { settings } = req.body;
+  if (!settings) return res.status(400).json({ success: false, pesan: "Data tidak valid." });
+  const username = req.headers["x-user"] || "admin";
+  const changes = [];
+  Object.entries(settings).forEach(([k, v]) => {
+    upsertSetting.run(k, String(v));
+    changes.push(`${k}=${v}`);
+  });
+  logAudit(username, role, "ubah_setting", changes.join(", "));
+  res.json({ success: true });
+});
+
+// Audit Log API
+app.get("/api/audit-log", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!HAK_AKSES[role]?.includes("audit_log"))
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  const limit = parseInt(req.query.limit) || 100;
+  const offset = parseInt(req.query.offset) || 0;
+  const logs = db.prepare("SELECT * FROM audit_log ORDER BY id DESC LIMIT ? OFFSET ?").all(limit, offset);
+  const total = db.prepare("SELECT COUNT(*) as c FROM audit_log").get().c;
+  res.json({ success: true, data: logs, total });
 });
 
 // VAPID public key untuk client
@@ -1134,10 +1333,15 @@ io.on("connection", (socket) => {
     // Kirim data awal sesuai role
     if (["admin", "owner", "kasir"].includes(role)) {
       const data = getSemuaData();
+      const pendingOrders = getPesananPending.all().map(r => ({
+        ...r,
+        items: JSON.parse(r.items),
+      }));
       socket.emit("sync-data", {
         ...data,
         menu: getAllMenu.all(),
         hakAkses: HAK_AKSES[role],
+        pendingOnlineOrders: pendingOrders,
       });
     }
   });
@@ -1156,10 +1360,15 @@ io.on("connection", (socket) => {
   socket.on("request-sync", () => {
     if (!["admin", "owner", "kasir"].includes(userRole)) return;
     const data = getSemuaData();
+    const pendingOrders = getPesananPending.all().map(r => ({
+      ...r,
+      items: JSON.parse(r.items),
+    }));
     socket.emit("sync-data", {
       ...data,
       menu: getAllMenu.all(),
       hakAkses: HAK_AKSES[userRole],
+      pendingOnlineOrders: pendingOrders,
     });
   });
 
@@ -1227,6 +1436,7 @@ io.on("connection", (socket) => {
         menu: getAllMenu.all(),
       });
       console.log(`[${userName}] void: ${lastItem.menu}`);
+      logAudit(userName, userRole, "void", `Menu: ${lastItem.menu}, Qty: ${lastItem.qty}, Total: ${lastItem.total}`);
     }
   });
 
@@ -1240,9 +1450,11 @@ io.on("connection", (socket) => {
     if (mode === "semua") {
       deleteAllTransaksi.run();
       console.log(`[${userName}] RESET OMZET: semua transaksi dihapus`);
+      logAudit(userName, userRole, "reset_omzet", "Mode: semua — semua transaksi dihapus");
     } else if (mode === "hari_ini") {
       deleteTransaksiHariIni.run();
       console.log(`[${userName}] RESET OMZET: transaksi hari ini dihapus`);
+      logAudit(userName, userRole, "reset_omzet", "Mode: hari_ini — transaksi hari ini dihapus");
     }
     const allData = getSemuaData();
     io.emit("transaction-update", {
@@ -1262,34 +1474,50 @@ io.on("connection", (socket) => {
     console.log(
       `[Meja ${data.meja}] Pesanan masuk: ${data.items.length} item, total Rp ${data.total}`,
     );
-    // Simpan transaksi ke database
-    const tanggal = new Date().toLocaleDateString("id-ID");
-    const metode = data.metode || "Tunai";
-    const kasirLabel = `Meja ${data.meja}`;
-    const trxItems = [];
-    for (const item of data.items) {
-      insertTransaksi.run(tanggal, kasirLabel, item.nama, item.qty, item.harga * item.qty, metode);
-      // Kurangi stok
-      if (item.menuId) kurangiStok.run(item.qty, item.menuId, item.qty);
-      trxItems.push({ Tanggal: tanggal, Kasir: kasirLabel, Menu: item.nama, Qty: item.qty, Total: item.harga * item.qty, Metode: metode });
+    try {
+      // Simpan transaksi ke database
+      const tanggal = new Date().toLocaleDateString("id-ID");
+      const metode = data.metode || "Tunai";
+      const kasirLabel = `Meja ${data.meja}`;
+      const trxItems = [];
+      for (const item of data.items) {
+        insertTransaksi.run(tanggal, kasirLabel, item.nama, item.qty, item.harga * item.qty, metode, item.catatan || "", 0, "");
+        // Kurangi stok
+        if (item.menuId) kurangiStok.run(item.qty, item.menuId, item.qty);
+        trxItems.push({ Tanggal: tanggal, Kasir: kasirLabel, Menu: item.nama, Qty: item.qty, Total: item.harga * item.qty, Metode: metode });
+      }
+      // Simpan ke pesanan_online untuk tracking di kasir
+      const kodePesanan = generateKodePesanan();
+      insertPesananOnline.run(
+        0, `Meja ${data.meja}`, "", "", data.meja, "meja",
+        JSON.stringify(data.items), data.total || 0, 0, "",
+        metode, data.tipe || "Dine In", "", "menunggu", kodePesanan
+      );
+      const pesananId = db.prepare("SELECT last_insert_rowid() as id").get().id;
+      // Broadcast ke semua kasir/admin/owner + update data
+      const allData = getSemuaData();
+      io.emit("customer-order", {
+        meja: data.meja,
+        items: data.items,
+        total: data.total,
+        metode,
+        tipe: data.tipe || "Dine In",
+        kodePesanan,
+        dbId: pesananId,
+        waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+      });
+      console.log(`[Meja ${data.meja}] Pesanan ${kodePesanan} berhasil dikirim ke kasir`);
+      io.emit("transaction-update", {
+        newItems: trxItems,
+        totalAmount: data.total,
+        history: allData.history,
+        omzet: allData.omzet,
+        menu: getAllMenu.all(),
+      });
+    } catch (err) {
+      console.error(`[Meja ${data.meja}] ERROR saat proses pesanan:`, err);
+      socket.emit("error", { pesan: "Gagal memproses pesanan: " + err.message });
     }
-    // Broadcast ke semua kasir/admin/owner + update data
-    const allData = getSemuaData();
-    io.emit("customer-order", {
-      meja: data.meja,
-      items: data.items,
-      total: data.total,
-      metode,
-      tipe: data.tipe || "Dine In",
-      waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
-    });
-    io.emit("transaction-update", {
-      newItems: trxItems,
-      totalAmount: data.total,
-      history: allData.history,
-      omzet: allData.omzet,
-      menu: getAllMenu.all(),
-    });
   });
 
   // Pesanan online dari app (pesan dari rumah)
@@ -1301,28 +1529,28 @@ io.on("connection", (socket) => {
     console.log(
       `[ONLINE] ${data.nama} - ${data.items.length} item, total Rp ${data.total}`,
     );
-    // Simpan transaksi ke database
-    const tanggal = new Date().toLocaleDateString("id-ID");
-    const metode = data.metode || "Tunai";
-    const kasirLabel = `Online (${data.nama || "Tanpa Nama"})`;
-    const trxItems = [];
-    const finalTotal = (data.total || 0) - (data.diskon || 0);
-    for (const item of data.items) {
-      insertTransaksi.run(tanggal, kasirLabel, item.nama, item.qty, item.harga * item.qty, metode);
-      if (item.menuId) kurangiStok.run(item.qty, item.menuId, item.qty);
-      trxItems.push({ Tanggal: tanggal, Kasir: kasirLabel, Menu: item.nama, Qty: item.qty, Total: item.harga * item.qty, Metode: metode });
-    }
-    // Update poin pelanggan jika login
-    if (data.pelangganId && finalTotal > 0) {
-      const poinDapat = Math.floor(finalTotal / POIN_PER_RUPIAH);
-      updatePelangganBelanja.run(poinDapat, finalTotal, data.pelangganId);
-    }
-    // Simpan ke pesanan_online untuk tracking
-    let kodePesanan = null;
-    if (data.pelangganId) {
-      kodePesanan = generateKodePesanan();
+    try {
+      // Simpan transaksi ke database
+      const tanggal = new Date().toLocaleDateString("id-ID");
+      const metode = data.metode || "Tunai";
+      const kasirLabel = `Online (${data.nama || "Tanpa Nama"})`;
+      const trxItems = [];
+      const finalTotal = (data.total || 0) - (data.diskon || 0);
+      for (const item of data.items) {
+        insertTransaksi.run(tanggal, kasirLabel, item.nama, item.qty, item.harga * item.qty, metode, item.catatan || "", 0, "");
+        if (item.menuId) kurangiStok.run(item.qty, item.menuId, item.qty);
+        trxItems.push({ Tanggal: tanggal, Kasir: kasirLabel, Menu: item.nama, Qty: item.qty, Total: item.harga * item.qty, Metode: metode });
+      }
+      // Update poin pelanggan jika login
+      if (data.pelangganId && finalTotal > 0) {
+        const poinDapat = Math.floor(finalTotal / POIN_PER_RUPIAH);
+        updatePelangganBelanja.run(poinDapat, finalTotal, data.pelangganId);
+      }
+      // Simpan ke pesanan_online untuk tracking (semua order, termasuk guest)
+      const kodePesanan = generateKodePesanan();
       insertPesananOnline.run(
-        data.pelangganId, data.nama || "Tanpa Nama", data.alamat || "", data.telp || "",
+        data.pelangganId || 0, data.nama || "Tanpa Nama", data.alamat || "", data.telp || "",
+        "", "online",
         JSON.stringify(data.items), data.total || 0, data.diskon || 0, data.promoKode || "",
         metode, data.tipe || "Dine In", data.catatan || "", "menunggu", kodePesanan
       );
@@ -1331,31 +1559,35 @@ io.on("connection", (socket) => {
         const promo = getPromoByKode.get(data.promoKode.toUpperCase());
         if (promo) incrementPromoUsage.run(promo.id);
       }
-    }
-    // Emit order confirmed back to the ordering client
-    socket.emit("order-confirmed", { kodePesanan, pelangganId: data.pelangganId });
+      // Emit order confirmed back to the ordering client
+      socket.emit("order-confirmed", { kodePesanan, pelangganId: data.pelangganId });
 
-    const allData = getSemuaData();
-    io.emit("online-order", {
-      nama: data.nama || "Tanpa Nama",
-      alamat: data.alamat || "-",
-      telp: data.telp || "-",
-      items: data.items,
-      total: data.total,
-      diskon: data.diskon || 0,
-      metode,
-      tipe: data.tipe || "Dine In",
-      catatan: data.catatan || "",
-      kodePesanan,
-      waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
-    });
-    io.emit("transaction-update", {
-      newItems: trxItems,
-      totalAmount: finalTotal,
-      history: allData.history,
-      omzet: allData.omzet,
-      menu: getAllMenu.all(),
-    });
+      const allData = getSemuaData();
+      io.emit("online-order", {
+        nama: data.nama || "Tanpa Nama",
+        alamat: data.alamat || "-",
+        telp: data.telp || "-",
+        items: data.items,
+        total: data.total,
+        diskon: data.diskon || 0,
+        metode,
+        tipe: data.tipe || "Dine In",
+        catatan: data.catatan || "",
+        kodePesanan,
+        waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+      });
+      console.log(`[ONLINE] Pesanan ${kodePesanan || 'guest'} berhasil dikirim ke kasir`);
+      io.emit("transaction-update", {
+        newItems: trxItems,
+        totalAmount: finalTotal,
+        history: allData.history,
+        omzet: allData.omzet,
+        menu: getAllMenu.all(),
+      });
+    } catch (err) {
+      console.error(`[ONLINE] ERROR saat proses pesanan:`, err);
+      socket.emit("error", { pesan: "Gagal memproses pesanan: " + err.message });
+    }
   });
 
   // Update status pesanan online (dari kasir)
@@ -1377,6 +1609,22 @@ io.on("connection", (socket) => {
         status: data.status,
       });
       console.log(`[${userName}] Update pesanan ${pesanan.kode_pesanan} → ${data.status}`);
+
+      // Kirim Web Push Notification ke HP pembeli
+      if (data.status === "diproses" && pesanan.meja) {
+        const subs = pushSubscriptions[pesanan.meja] || [];
+        const payload = JSON.stringify({
+          title: "🔥 Pesanan Diproses! — Cafe Soluna",
+          body: `Pesanan ${pesanan.kode_pesanan} sedang disiapkan. Mohon tunggu sebentar!`,
+          tag: "order-processing-" + pesanan.id,
+          url: pesanan.meja === "online" ? "/app.html" : "/pesan?meja=" + pesanan.meja,
+        });
+        subs.forEach((sub, i) => {
+          webPush.sendNotification(sub, payload).catch(() => {
+            subs.splice(i, 1);
+          });
+        });
+      }
     }
   });
 
@@ -1389,7 +1637,7 @@ io.on("connection", (socket) => {
     // Kirim Web Push Notification ke semua subscriber meja ini
     const subs = pushSubscriptions[data.meja] || [];
     const payload = JSON.stringify({
-      title: "Pesanan Siap! — Warkop Urban",
+      title: "Pesanan Siap! — Cafe Soluna",
       body: `Pesanan Meja ${data.meja} sudah selesai. Silakan ambil di kasir!`,
       tag: "order-ready-" + data.meja,
       url: "/pesan?meja=" + data.meja,
@@ -1444,14 +1692,14 @@ http.listen(PORT, "0.0.0.0", () => {
   // Broadcast mDNS supaya bisa diakses via http://warkop.local:5000
   const bonjour = new Bonjour();
   bonjour.publish({
-    name: "Warkop Urban POS",
+    name: "Cafe Soluna POS",
     type: "http",
     port: PORT,
     host: "warkop.local",
   });
 
   console.log("========================================");
-  console.log("      SERVER WARKOP URBAN AKTIF!        ");
+  console.log("      SERVER CAFE SOLUNA AKTIF!        ");
   console.log(`  LOKAL     : http://localhost:${PORT}`);
   console.log(`  JARINGAN  : http://${localIP}:${PORT}`);
   console.log(`  mDNS      : http://warkop.local:${PORT}`);

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#050505" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Warkop Urban - Layar Pembeli</title>
+    <title>Cafe Soluna - Layar Pembeli</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -304,23 +304,9 @@
 
     <!-- Splash Screen -->
     <div id="splash" class="splash-screen">
-      <div class="relative mb-6">
-        <div class="absolute inset-0 w-24 h-24 rounded-full bg-orange-500/20 animate-ping" style="animation-duration:2s;margin-left:-12px;margin-top:-12px;width:120%;height:120%;"></div>
-        <div class="splash-logo bg-gradient-to-br from-orange-500 via-orange-600 to-red-700 w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-600/40 border border-orange-400/20">
-          <svg class="w-14 h-14" viewBox="0 0 40 40" fill="none">
-            <g class="logo-steam">
-              <path d="M13 11 Q13 7 15 5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-              <path d="M20 11 Q20 6 22 4" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-              <path d="M27 11 Q27 7 29 5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            </g>
-            <rect x="7" y="13" width="24" height="16" rx="4" fill="rgba(255,255,255,0.9)"/>
-            <path d="M31 17 h4 a3 3 0 0 1 0 6 h-4" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none" stroke-linecap="round"/>
-            <rect x="5" y="31" width="28" height="3" rx="1.5" fill="rgba(255,255,255,0.3)"/>
-            <text x="19" y="25" text-anchor="middle" fill="#ea580c" font-size="8.5" font-weight="900" font-family="sans-serif">WU</text>
-          </svg>
-        </div>
+      <div class="splash-logo mb-6">
+        <img src="/public/soluna.png" alt="Cafe Soluna" class="w-64 max-w-[80vw] h-auto drop-shadow-2xl" />
       </div>
-      <h2 class="splash-text text-2xl font-black text-white tracking-tight mb-1">WARKOP <span class="text-gradient-warm">URBAN</span></h2>
       <p class="splash-text text-[10px] font-bold text-white/25 uppercase tracking-[0.35em] mb-8" style="animation-delay:0.6s">Customer Display</p>
       <div class="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
         <div class="splash-bar h-full bg-gradient-to-r from-orange-500 to-red-600 rounded-full" style="width:0%"></div>
@@ -368,14 +354,14 @@
                 <rect x="7" y="13" width="24" height="16" rx="4" fill="rgba(255,255,255,0.9)"/>
                 <path d="M31 17 h4 a3 3 0 0 1 0 6 h-4" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none" stroke-linecap="round"/>
                 <rect x="5" y="31" width="28" height="3" rx="1.5" fill="rgba(255,255,255,0.3)"/>
-                <text x="19" y="25" text-anchor="middle" fill="#ea580c" font-size="8.5" font-weight="900" font-family="sans-serif">WU</text>
+                <text x="19" y="25" text-anchor="middle" fill="#ea580c" font-size="8.5" font-weight="900" font-family="sans-serif">CS</text>
               </svg>
             </div>
           </div>
           <div>
             <h1 class="text-2xl font-black tracking-tight leading-none">
-              <span class="text-white">WARKOP</span>
-              <span class="text-gradient-warm ml-1">URBAN</span>
+              <span class="text-white">CAFE</span>
+              <span class="text-gradient-warm ml-1">SOLUNA</span>
             </h1>
             <p class="text-[8px] font-bold text-white/15 uppercase tracking-[0.35em] mt-0.5">Konfirmasi Pesanan</p>
           </div>
@@ -394,12 +380,12 @@
       <!-- Marquee -->
       <div class="marquee glass rounded-2xl py-2.5 mb-4 flex-shrink-0">
         <div class="marquee-inner">
-          <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#9749; Selamat datang di Warkop Urban!</span>
+          <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#9749; Selamat datang di Cafe Soluna!</span>
           <span class="text-[10px] font-bold text-white/20 mx-6">&#11088; Belanja Rp 10.000 = 1 Poin</span>
           <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#127873; Tukar poin untuk diskon!</span>
           <span class="text-[10px] font-bold text-white/20 mx-6">&#128293; Menu best seller tersedia!</span>
           <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#128241; Bayar praktis dengan QRIS</span>
-          <span class="text-[10px] font-bold text-white/20 mx-6">&#9749; Selamat datang di Warkop Urban!</span>
+          <span class="text-[10px] font-bold text-white/20 mx-6">&#9749; Selamat datang di Cafe Soluna!</span>
           <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#11088; Belanja Rp 10.000 = 1 Poin</span>
           <span class="text-[10px] font-bold text-white/20 mx-6">&#127873; Tukar poin untuk diskon!</span>
           <span class="text-[10px] font-bold text-orange-400/50 mx-6">&#128293; Menu best seller tersedia!</span>
@@ -498,7 +484,7 @@
       <div class="text-center py-3 flex-shrink-0">
         <div class="flex justify-center items-center gap-4 mb-2">
           <div class="h-[1px] w-10 bg-gradient-to-r from-transparent to-white/8"></div>
-          <span class="text-white/10 text-[7px] font-black uppercase tracking-[0.4em]">Warkop Urban</span>
+          <span class="text-white/10 text-[7px] font-black uppercase tracking-[0.4em]">Cafe Soluna</span>
           <div class="h-[1px] w-10 bg-gradient-to-l from-transparent to-white/8"></div>
         </div>
         <p class="text-white/8 text-[8px]">Pastikan nominal sesuai sebelum membayar</p>
@@ -510,7 +496,7 @@
     <div id="receipt-overlay" class="receipt-overlay hidden" onclick="closeReceipt(event)">
       <div class="receipt-paper" onclick="event.stopPropagation()">
         <div class="text-center mb-2">
-          <p class="text-lg font-black tracking-tighter">WARKOP URBAN</p>
+          <p class="text-lg font-black tracking-tighter">CAFE SOLUNA</p>
           <p class="text-[9px] text-gray-400 tracking-widest">STRUK PEMBELIAN</p>
         </div>
         <hr class="receipt-dash">
@@ -550,7 +536,7 @@
           <p class="text-[8px] text-gray-300 mt-1">Simpan struk ini sebagai bukti pembelian</p>
           <div class="flex items-center justify-center gap-1 mt-2">
             <span class="text-[10px]">&#9749;</span>
-            <p class="text-[8px] text-gray-300 font-bold tracking-widest uppercase">Warkop Urban POS</p>
+            <p class="text-[8px] text-gray-300 font-bold tracking-widest uppercase">Cafe Soluna POS</p>
             <span class="text-[10px]">&#9749;</span>
           </div>
         </div>
@@ -607,7 +593,7 @@
         } else if (h >= 15 && h < 18) {
           greetEmoji.innerHTML = '&#127773;';
           greetText.textContent = 'Selamat Sore!';
-          greetSub.textContent = 'Waktu santai bersama Warkop Urban';
+          greetSub.textContent = 'Waktu santai bersama Cafe Soluna';
         } else {
           greetEmoji.innerHTML = '&#127769;';
           greetText.textContent = 'Selamat Malam!';

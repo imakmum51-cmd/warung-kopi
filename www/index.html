@@ -9,7 +9,7 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/icon-192.svg" />
     <link rel="apple-touch-icon" href="/icon-192.svg" />
-    <title>Warkop Urban</title>
+    <title>Cafe Soluna</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -72,9 +72,9 @@
     <!-- Install Banner -->
     <div class="install-banner" id="install-banner">
       <div class="mx-4 mb-4 glass-card rounded-2xl p-4 flex items-center gap-3" style="background:rgba(234,88,12,0.15); border-color:rgba(234,88,12,0.3);">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-lg flex-shrink-0">WU</div>
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-900 text-lg flex-shrink-0">CS</div>
         <div class="flex-1 min-w-0">
-          <p class="text-white font-700 text-sm">Install Warkop Urban</p>
+          <p class="text-white font-700 text-sm">Install Cafe Soluna</p>
           <p class="text-white/40 text-xs">Akses cepat dari home screen</p>
         </div>
         <button onclick="installApp()" class="btn-primary px-4 py-2 rounded-xl text-white font-700 text-xs flex-shrink-0">Install</button>
@@ -89,7 +89,7 @@
       <header class="sticky top-0 z-50 px-4 pt-4 pb-3" style="background:rgba(5,5,5,0.85); backdrop-filter:blur(20px);">
         <div class="flex items-center justify-between mb-3">
           <div>
-            <h1 class="text-xl font-800"><span class="gradient-text">Warkop Urban</span></h1>
+            <h1 class="text-xl font-800"><span class="gradient-text">Cafe Soluna</span></h1>
             <p class="text-xs text-white/40 mt-0.5">Pesan Online</p>
           </div>
           <div class="flex items-center gap-2">
@@ -219,7 +219,7 @@
         </div>
       </div>
       <h2 class="text-white text-2xl font-800 mb-2">Pesanan Berhasil!</h2>
-      <p class="text-white/50 text-sm text-center max-w-[260px] leading-relaxed" id="success-desc">Pesanan Anda telah dikirim ke Warkop Urban. Kami akan segera memprosesnya.</p>
+      <p class="text-white/50 text-sm text-center max-w-[260px] leading-relaxed" id="success-desc">Pesanan Anda telah dikirim ke Cafe Soluna. Kami akan segera memprosesnya.</p>
       <div id="success-qris" class="hidden mt-5 flex flex-col items-center">
         <div class="bg-white p-3 rounded-3xl shadow-2xl shadow-black/40">
           <img src="/qris.png.png" class="w-52 h-52 object-contain" alt="QRIS" />
@@ -433,19 +433,31 @@
       // ============================
       function submitOrder() {
         if (isSubmitting || getCartCount() === 0) return;
+        if (!socket.connected) {
+          alert("Tidak terhubung ke server. Periksa koneksi internet Anda dan coba lagi.");
+          return;
+        }
         const nama = document.getElementById("input-nama").value.trim();
         const alamat = document.getElementById("input-alamat").value.trim();
         const telp = document.getElementById("input-telp").value.trim();
         if (!nama) { alert("Masukkan nama Anda!"); return; }
         if (!telp) { alert("Masukkan no. WhatsApp!"); return; }
         isSubmitting = true;
+        lastKodePesanan = null;
         const btn = document.getElementById("btn-submit");
         btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Mengirim...';
-        const items = Object.values(cart).map(i => ({ menuId: i.id, nama: i.nama, qty: i.qty, harga: i.harga }));
+        const items = Object.values(cart).map(i => {
+          const obj = { menuId: i.id, nama: i.nama, qty: i.qty, harga: i.harga };
+          if (i.ukuran) obj.ukuran = i.ukuran;
+          if (i.topping && i.topping.length) obj.topping = i.topping;
+          if (i.catatan) obj.catatan = i.catatan;
+          return obj;
+        });
         socket.emit("online-order", {
           nama, alamat, telp, items, total: getCartTotal(),
           metode: metodePembayaran, tipe: tipePesanan,
           catatan: document.getElementById("input-catatan").value.trim(),
+          pelangganId: null,
         });
         setTimeout(() => {
           toggleCart();
@@ -456,11 +468,12 @@
             document.getElementById("success-total").textContent = `Rp ${getCartTotal().toLocaleString("id-ID")}`;
             const qris = document.getElementById("success-qris");
             if (metodePembayaran === "QRIS") { qris.classList.remove("hidden"); qris.classList.add("flex"); document.getElementById("success-desc").textContent = "Silakan scan QRIS untuk menyelesaikan pembayaran."; }
-            else { qris.classList.add("hidden"); qris.classList.remove("flex"); document.getElementById("success-desc").textContent = "Pesanan Anda telah dikirim ke Warkop Urban. Kami akan segera memprosesnya."; }
+            else { qris.classList.add("hidden"); qris.classList.remove("flex"); document.getElementById("success-desc").textContent = lastKodePesanan ? `Kode pesanan: ${lastKodePesanan}. Pesanan Anda sedang diproses!` : "Pesanan Anda telah dikirim ke Cafe Soluna. Kami akan segera memprosesnya."; }
             document.getElementById("success-overlay").classList.add("show");
           }, 300);
         }, 800);
       }
+      let lastKodePesanan = null;
 
       function resetPage() {
         cart = {}; isSubmitting = false; tipePesanan = "Dine In"; metodePembayaran = "Tunai";
@@ -487,6 +500,9 @@
       });
       socket.on("sync-data", (d) => { if (d.menu) { menuData = d.menu; renderMenu(); } });
       socket.on("transaction-update", (d) => { if (d.menu) { menuData = d.menu; renderMenu(); } });
+      socket.on("order-confirmed", (data) => {
+        if (data.kodePesanan) lastKodePesanan = data.kodePesanan;
+      });
       socket.on("order-ready", (d) => {
         if (!d || d.meja !== "online") return;
         showOrderReady();
@@ -506,7 +522,7 @@
           });
         } catch(e){}
         if ("Notification" in window && Notification.permission === "granted") {
-          try { new Notification("🎉 Pesanan Siap! — Warkop Urban", { body: "Pesanan Anda sudah selesai!", icon: "/icon-192.svg", tag: "order-ready" }); } catch(e){}
+          try { new Notification("🎉 Pesanan Siap! — Cafe Soluna", { body: "Pesanan Anda sudah selesai!", icon: "/icon-192.svg", tag: "order-ready" }); } catch(e){}
         }
       }
       function closeOrderReady() {
