@@ -923,9 +923,33 @@
       const TOPPING_OPTIONS = {
         kopi:    [ {n:"Extra Shot",e:"☕"}, {n:"Boba",e:"🧋"}, {n:"Jelly",e:"🍮"}, {n:"Whip Cream",e:"🍦"}, {n:"Keju",e:"🧀"}, {n:"Coklat Bubuk",e:"🍫"} ],
         minuman: [ {n:"Boba",e:"🧋"}, {n:"Jelly",e:"🍮"}, {n:"Whip Cream",e:"🍦"}, {n:"Es Extra",e:"🧊"}, {n:"Lemon",e:"🍋"} ],
-        makanan: [ {n:"Sambal Extra",e:"🌶️"}, {n:"Telur",e:"🥚"}, {n:"Keju",e:"🧀"}, {n:"Ayam Suwir",e:"🍗"}, {n:"Jagung",e:"🌽"}, {n:"Kerupuk",e:"🍘"} ],
+        makanan: [ {n:"Sambal Extra",e:"🌶️"}, {n:"Telur",e:"🥚"}, {n:"Keju",e:"🧀"}, {n:"Kerupuk",e:"🍘"} ],
         snack:   [ {n:"Keju",e:"🧀"}, {n:"Coklat",e:"🍫"}, {n:"Madu",e:"🍯"}, {n:"Kacang",e:"🥜"} ],
       };
+
+      // Topping spesifik per nama makanan — urutan penting, match pertama menang
+      const MAKANAN_RULES = [
+        { test: /\b(indomie|mie)\b/i, toppings: [
+            {n:"Telur Mata Sapi",e:"🍳"}, {n:"Keju",e:"🧀"}, {n:"Kornet",e:"🥫"}, {n:"Sosis",e:"🌭"}, {n:"Baso",e:"🍡"}, {n:"Cabe Rawit",e:"🌶️"} ] },
+        { test: /\bnasi\b/i, toppings: [
+            {n:"Telur Mata Sapi",e:"🍳"}, {n:"Ayam Suwir",e:"🍗"}, {n:"Sosis",e:"🌭"}, {n:"Kerupuk",e:"🍘"}, {n:"Acar",e:"🥒"}, {n:"Sambal Extra",e:"🌶️"} ] },
+        { test: /\bkentang\b/i, toppings: [
+            {n:"Saus BBQ",e:"🍖"}, {n:"Saus Keju",e:"🧀"}, {n:"Mayo",e:"🥫"}, {n:"Saus Sambal",e:"🌶️"}, {n:"Bubuk BBQ",e:"🍛"}, {n:"Bubuk Balado",e:"🌶️"} ] },
+        { test: /\bdimsum\b/i, toppings: [
+            {n:"Cabe Rawit",e:"🌶️"}, {n:"Kecap Asin",e:"🥢"}, {n:"Saus Sambal",e:"🌶️"}, {n:"Mayo",e:"🥫"} ] },
+        { test: /\b(cireng|otak|risol|risoles|tahu)\b/i, toppings: [
+            {n:"Saus Sambal",e:"🌶️"}, {n:"Saus Kacang",e:"🥜"}, {n:"Mayo",e:"🥫"}, {n:"Kecap Manis",e:"🥢"} ] },
+        { test: /\bplatter\b/i, toppings: [
+            {n:"Saus Sambal",e:"🌶️"}, {n:"Mayo",e:"🥫"}, {n:"Saus Keju",e:"🧀"}, {n:"Saus BBQ",e:"🍖"} ] },
+      ];
+
+      function getToppingsForItem(item) {
+        if (item.kategori === "makanan") {
+          const match = MAKANAN_RULES.find(r => r.test.test(item.nama || ""));
+          return match ? match.toppings : TOPPING_OPTIONS.makanan;
+        }
+        return TOPPING_OPTIONS[item.kategori] || [];
+      }
 
       let popupItemId = null, popupUkuran = "Regular", popupToppings = [];
       function addToCart(id) {
@@ -939,8 +963,8 @@
         document.querySelectorAll(".ukuran-btn").forEach(b => b.classList.toggle("active", b.dataset.ukuran === "Regular"));
         document.getElementById("popup-ukuran-wrap").style.display = ["kopi","minuman"].includes(item.kategori) ? "" : "none";
 
-        // Render toppings sesuai kategori menu
-        const toppings = TOPPING_OPTIONS[item.kategori] || [];
+        // Render toppings sesuai nama/kategori menu
+        const toppings = getToppingsForItem(item);
         const toppingWrap = document.getElementById("popup-topping-wrap");
         const toppingList = document.getElementById("popup-topping-list");
         if (toppings.length === 0) {
