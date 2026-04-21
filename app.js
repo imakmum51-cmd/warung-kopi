@@ -175,6 +175,21 @@ db.exec(`
 // Migrasi: tambah kolom jadwal_ambil di pesanan_online untuk pre-order
 try { db.exec("ALTER TABLE pesanan_online ADD COLUMN jadwal_ambil TEXT DEFAULT ''"); } catch(e) {}
 
+// Tabel OTP verification (untuk register via WA)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS otp_verification (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telp TEXT NOT NULL,
+    kode TEXT NOT NULL,
+    expired_at DATETIME NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    used INTEGER DEFAULT 0,
+    verified_at DATETIME DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_otp_telp ON otp_verification(telp)"); } catch(e) {}
+
 // Tabel pengeluaran operasional (buat profit bersih)
 db.exec(`
   CREATE TABLE IF NOT EXISTS pengeluaran (
@@ -762,6 +777,160 @@ app.post("/api/broadcast-promo", async (req, res) => {
 });
 
 // ============================================
+// OTP VERIFIKASI (WhatsApp via Fonnte)
+// ============================================
+const FONNTE_TOKEN = process.env.FONNTE_TOKEN || "";
+const OTP_EXPIRE_MINUTES = 5;
+const OTP_MAX_ATTEMPTS = 3;
+const OTP_COOLDOWN_SECONDS = 60; // jeda antar request OTP
+const OTP_REQUEST_LIMIT = 5;     // max 5 OTP per 10 menit per nomor
+const REGISTER_WINDOW_MINUTES = 30; // OTP verified berlaku 30 menit untuk register
+
+// Normalize nomor: 0812... / +62812... / 62812... → 62812...
+function normalizeTelp(raw) {
+  if (!raw) return "";
+  let t = String(raw).replace(/[^\d]/g, "");
+  if (t.startsWith("0")) t = "62" + t.slice(1);
+  else if (t.startsWith("62")) { /* noop */ }
+  else if (t.startsWith("8")) t = "62" + t;
+  return t;
+}
+
+function generateOtpCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// Kirim pesan WhatsApp via Fonnte API
+async function sendWhatsApp(target, message) {
+  if (!FONNTE_TOKEN) {
+    console.log(`[OTP-DEV] WA to ${target}:\n${message}`);
+    return { success: true, dev: true };
+  }
+  try {
+    const form = new URLSearchParams();
+    form.append("target", target);
+    form.append("message", message);
+    form.append("countryCode", "62");
+    const res = await fetch("https://api.fonnte.com/send", {
+      method: "POST",
+      headers: { Authorization: FONNTE_TOKEN },
+      body: form,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data.status === false) {
+      console.error("[FONNTE ERROR]", data);
+      return { success: false, error: data.reason || "Gagal kirim WA." };
+    }
+    return { success: true, data };
+  } catch (err) {
+    console.error("[FONNTE EXCEPTION]", err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// POST /api/otp/request — generate + kirim OTP
+app.post("/api/otp/request", async (req, res) => {
+  const telp = normalizeTelp(req.body?.telp);
+  if (!telp || telp.length < 10 || telp.length > 14) {
+    return res.status(400).json({ success: false, pesan: "Nomor WhatsApp tidak valid." });
+  }
+  // Cek nomor sudah terdaftar → tolak (biar gak bisa dipakai duplicate)
+  const existing = db.prepare("SELECT id FROM pelanggan WHERE telp = ?").get(telp);
+  if (existing) {
+    return res.status(400).json({ success: false, pesan: "Nomor ini sudah terdaftar. Silakan login." });
+  }
+  // Rate limit: cooldown antar request
+  const recent = db.prepare(
+    "SELECT created_at FROM otp_verification WHERE telp = ? ORDER BY id DESC LIMIT 1"
+  ).get(telp);
+  if (recent) {
+    const delta = (Date.now() - new Date(recent.created_at).getTime()) / 1000;
+    if (delta < OTP_COOLDOWN_SECONDS) {
+      return res.status(429).json({
+        success: false,
+        pesan: `Tunggu ${Math.ceil(OTP_COOLDOWN_SECONDS - delta)} detik sebelum request lagi.`,
+      });
+    }
+  }
+  // Rate limit: max 5 request per 10 menit
+  const recentCount = db.prepare(
+    "SELECT COUNT(*) as c FROM otp_verification WHERE telp = ? AND datetime(created_at) > datetime('now','-10 minutes')"
+  ).get(telp).c;
+  if (recentCount >= OTP_REQUEST_LIMIT) {
+    return res.status(429).json({
+      success: false,
+      pesan: "Terlalu banyak permintaan OTP. Coba lagi 10 menit lagi.",
+    });
+  }
+  // Generate OTP & simpan
+  const kode = generateOtpCode();
+  const expiredAt = new Date(Date.now() + OTP_EXPIRE_MINUTES * 60 * 1000).toISOString();
+  db.prepare(
+    "INSERT INTO otp_verification (telp, kode, expired_at) VALUES (?, ?, ?)"
+  ).run(telp, kode, expiredAt);
+  // Kirim via WA
+  const message = `🌙 *Cafe Soluna*\n\nKode verifikasi Anda: *${kode}*\n\nMasukkan kode ini di aplikasi untuk menyelesaikan pendaftaran.\n\n⏱️ Berlaku ${OTP_EXPIRE_MINUTES} menit.\nJangan bagikan ke siapapun.`;
+  const waRes = await sendWhatsApp(telp, message);
+  if (!waRes.success) {
+    return res.status(500).json({
+      success: false,
+      pesan: "Gagal kirim OTP. Pastikan nomor WA aktif & coba lagi.",
+    });
+  }
+  res.json({
+    success: true,
+    pesan: `OTP dikirim ke ${telp.replace(/^62/, "0").replace(/(\d{4})(\d{4})(\d+)/, "$1-$2-$3")}`,
+    expired_in_seconds: OTP_EXPIRE_MINUTES * 60,
+    dev_mode: waRes.dev || false,
+    // Hanya di dev mode (no FONNTE_TOKEN), kirim kode ke response untuk testing
+    dev_code: waRes.dev ? kode : undefined,
+  });
+});
+
+// POST /api/otp/verify — validasi kode
+app.post("/api/otp/verify", (req, res) => {
+  const telp = normalizeTelp(req.body?.telp);
+  const kode = String(req.body?.kode || "").trim();
+  if (!telp || !kode) {
+    return res.status(400).json({ success: false, pesan: "Nomor & kode wajib." });
+  }
+  // Ambil OTP aktif terbaru
+  const otp = db.prepare(
+    "SELECT * FROM otp_verification WHERE telp = ? AND used = 0 AND datetime(expired_at) > datetime('now') ORDER BY id DESC LIMIT 1"
+  ).get(telp);
+  if (!otp) {
+    return res.status(400).json({ success: false, pesan: "Kode tidak ditemukan atau sudah kadaluarsa. Silakan request ulang." });
+  }
+  if (otp.attempts >= OTP_MAX_ATTEMPTS) {
+    return res.status(429).json({ success: false, pesan: "Terlalu banyak percobaan. Request OTP baru." });
+  }
+  if (otp.kode !== kode) {
+    db.prepare("UPDATE otp_verification SET attempts = attempts + 1 WHERE id = ?").run(otp.id);
+    const sisa = OTP_MAX_ATTEMPTS - (otp.attempts + 1);
+    return res.status(400).json({
+      success: false,
+      pesan: `Kode salah. Sisa percobaan: ${Math.max(0, sisa)}.`,
+    });
+  }
+  // Mark verified
+  db.prepare(
+    "UPDATE otp_verification SET used = 1, verified_at = CURRENT_TIMESTAMP WHERE id = ?"
+  ).run(otp.id);
+  res.json({ success: true, telp, pesan: "Verifikasi berhasil. Silakan lanjutkan pendaftaran." });
+});
+
+// Helper: cek apakah nomor sudah terverifikasi belum lama ini
+function isRecentlyVerified(telp) {
+  const row = db.prepare(
+    `SELECT id FROM otp_verification
+     WHERE telp = ? AND used = 1 AND verified_at IS NOT NULL
+       AND datetime(verified_at) > datetime('now','-${REGISTER_WINDOW_MINUTES} minutes')
+     ORDER BY id DESC LIMIT 1`
+  ).get(telp);
+  return !!row;
+}
+
+// ============================================
 // PENGELUARAN OPERASIONAL — admin & owner
 // ============================================
 const PENGELUARAN_KATEGORI = [
@@ -1012,12 +1181,30 @@ app.post("/api/pelanggan/register", (req, res) => {
   if (!username || !username.trim()) return res.status(400).json({ success: false, pesan: "Username wajib diisi." });
   if (!password || password.length < 4) return res.status(400).json({ success: false, pesan: "Password minimal 4 karakter." });
   if (!nama || !nama.trim()) return res.status(400).json({ success: false, pesan: "Nama wajib diisi." });
+  if (!telp || !telp.trim()) return res.status(400).json({ success: false, pesan: "Nomor WhatsApp wajib diisi." });
 
-  const existing = db.prepare("SELECT id FROM pelanggan WHERE username = ?").get(username.trim().toLowerCase());
-  if (existing) return res.status(400).json({ success: false, pesan: "Username sudah dipakai." });
+  const telpNorm = normalizeTelp(telp);
+  if (telpNorm.length < 10 || telpNorm.length > 14) {
+    return res.status(400).json({ success: false, pesan: "Format nomor WhatsApp tidak valid." });
+  }
+
+  // Wajib OTP terverifikasi dalam 30 menit terakhir
+  if (!isRecentlyVerified(telpNorm)) {
+    return res.status(400).json({
+      success: false,
+      pesan: "Nomor WhatsApp belum diverifikasi. Silakan verifikasi OTP dulu.",
+      need_otp: true,
+    });
+  }
+
+  const existingUsername = db.prepare("SELECT id FROM pelanggan WHERE username = ?").get(username.trim().toLowerCase());
+  if (existingUsername) return res.status(400).json({ success: false, pesan: "Username sudah dipakai." });
+
+  const existingTelp = db.prepare("SELECT id FROM pelanggan WHERE telp = ?").get(telpNorm);
+  if (existingTelp) return res.status(400).json({ success: false, pesan: "Nomor WhatsApp sudah terdaftar." });
 
   const result = db.prepare("INSERT INTO pelanggan (nama, telp, username, password) VALUES (?, ?, ?, ?)").run(
-    nama.trim(), (telp || "").trim(), username.trim().toLowerCase(), password
+    nama.trim(), telpNorm, username.trim().toLowerCase(), password
   );
   const plg = db.prepare("SELECT id, nama, telp, username, poin, total_belanja, total_kunjungan FROM pelanggan WHERE id = ?").get(result.lastInsertRowid);
   res.json({ success: true, pelanggan: plg });
