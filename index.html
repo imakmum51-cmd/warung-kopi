@@ -2657,6 +2657,103 @@
       </div>
     </div>
 
+    <!-- ==================== PENGELUARAN MODAL ==================== -->
+    <div id="pengeluaran-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[110] p-4 backdrop-blur-sm">
+      <div class="bg-white w-full max-w-[560px] rounded-[24px] sm:rounded-[30px] p-5 sm:p-7 shadow-2xl max-h-[92vh] flex flex-col modal-content">
+        <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/20">
+              <span class="text-xl text-white">💸</span>
+            </div>
+            <div>
+              <h3 class="font-black text-slate-800 text-lg uppercase tracking-tight">Pengeluaran</h3>
+              <p class="text-[10px] text-slate-400 font-bold tracking-widest">BIAYA OPERASIONAL</p>
+            </div>
+          </div>
+          <button onclick="closePengeluaranModal()" class="bg-slate-100 hover:bg-red-50 hover:text-red-500 p-3 rounded-xl transition-all text-slate-400 active:scale-90">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Summary Box -->
+        <div id="pengeluaran-summary" class="grid grid-cols-3 gap-2 mb-4 text-center"></div>
+
+        <!-- Filter tanggal + tambah toggle -->
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <input type="date" id="pen-filter-dari" onchange="loadPengeluaran()" class="px-3 py-2.5 rounded-xl bg-slate-50 border-2 border-slate-100 font-semibold text-xs outline-none focus:border-red-400" />
+          <input type="date" id="pen-filter-sampai" onchange="loadPengeluaran()" class="px-3 py-2.5 rounded-xl bg-slate-50 border-2 border-slate-100 font-semibold text-xs outline-none focus:border-red-400" />
+        </div>
+
+        <!-- Tambah Pengeluaran (collapsible) -->
+        <div class="mb-4">
+          <button type="button" onclick="toggleTambahPengeluaran()" class="w-full bg-gradient-to-r from-red-500 to-rose-600 text-white py-3 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-red-500/30 hover:shadow-lg transition-all">
+            <span>➕ Tambah Pengeluaran</span>
+            <span id="pen-caret" class="transition-transform">▼</span>
+          </button>
+          <div id="pen-form" class="hidden bg-red-50 border border-red-200 rounded-2xl p-4 mt-2 space-y-2">
+            <input type="date" id="pen-tanggal" class="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-red-100 font-semibold text-sm outline-none focus:border-red-500" />
+            <select id="pen-kategori" class="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-red-100 font-semibold text-sm outline-none focus:border-red-500 text-slate-600">
+              <option value="">Pilih Kategori...</option>
+            </select>
+            <input type="text" id="pen-keterangan" placeholder="Keterangan (opsional)" class="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-red-100 font-semibold text-sm outline-none focus:border-red-500" />
+            <input type="number" id="pen-nominal" placeholder="Nominal (Rp)" class="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-red-100 font-semibold text-sm outline-none focus:border-red-500" />
+            <button onclick="submitPengeluaran()" class="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-xs uppercase tracking-widest">✓ Simpan Pengeluaran</button>
+          </div>
+        </div>
+
+        <!-- List Pengeluaran -->
+        <div class="flex items-center justify-between mb-2 px-1">
+          <p class="text-[11px] font-black text-slate-600 uppercase tracking-wider">📋 Daftar (<span id="pen-count">0</span>)</p>
+          <p class="text-[10px] font-bold text-slate-400">Scroll ↓</p>
+        </div>
+        <div id="pen-list" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar"></div>
+      </div>
+    </div>
+
+    <!-- ==================== KAS OPNAME MODAL ==================== -->
+    <div id="kas-opname-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[120] p-4 backdrop-blur-sm">
+      <div class="bg-white w-full max-w-[460px] rounded-3xl p-6 sm:p-7 shadow-2xl modal-content">
+        <div class="text-center mb-5">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30 mb-3">
+            <span class="text-2xl">💰</span>
+          </div>
+          <h3 class="font-black text-slate-800 text-lg uppercase tracking-tight">Tutup Shift — Kas Opname</h3>
+          <p class="text-[11px] text-slate-500 font-semibold mt-1" id="kas-username">–</p>
+        </div>
+
+        <!-- Expected Box -->
+        <div class="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-4 mb-4">
+          <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Seharusnya di Laci</p>
+          <p class="font-black text-2xl text-slate-800" id="kas-expected">Rp 0</p>
+          <div class="flex justify-between items-center mt-2 text-[10px] text-slate-400 font-semibold">
+            <span>Transaksi: <span id="kas-trx-count">0</span></span>
+            <span>Total omzet: <span id="kas-omzet">Rp 0</span></span>
+          </div>
+        </div>
+
+        <!-- Input Fisik -->
+        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Hitung Fisik Uang Laci (Rp)</label>
+        <input type="number" id="kas-fisik" oninput="updateKasSelisih()" placeholder="0" class="w-full px-4 py-3.5 rounded-xl bg-amber-50 border-2 border-amber-200 font-black text-xl outline-none focus:border-amber-500 text-center mb-3" />
+
+        <!-- Selisih Display -->
+        <div id="kas-selisih-box" class="rounded-2xl p-3 mb-4 text-center hidden">
+          <p class="text-[10px] font-black uppercase tracking-widest mb-1" id="kas-selisih-label">Selisih</p>
+          <p class="font-black text-xl" id="kas-selisih-value">Rp 0</p>
+          <p class="text-[10px] font-semibold mt-1" id="kas-selisih-note"></p>
+        </div>
+
+        <!-- Catatan -->
+        <textarea id="kas-catatan" maxlength="200" placeholder="Catatan (opsional): alasan kelebihan/kurang, dll..." rows="2" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 border-2 border-slate-100 font-semibold text-sm outline-none focus:border-amber-400 resize-none mb-4"></textarea>
+
+        <!-- Actions -->
+        <div class="flex gap-2">
+          <button onclick="closeKasOpname()" class="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-sm">Batal</button>
+          <button onclick="submitKasOpname()" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black text-sm shadow-lg shadow-amber-500/30">✓ Tutup Shift</button>
+        </div>
+        <p class="text-[10px] text-slate-400 text-center mt-3">Boleh tutup shift tanpa input jumlah (skip opname)</p>
+      </div>
+    </div>
+
     <!-- ==================== BROADCAST PROMO MODAL ==================== -->
     <div id="broadcast-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[110] p-4 backdrop-blur-sm">
       <div class="bg-white w-full max-w-[480px] rounded-[24px] sm:rounded-[30px] p-5 sm:p-8 shadow-2xl max-h-[90vh] flex flex-col modal-content">
@@ -3340,6 +3437,7 @@
           { label: "Pelanggan", desc: "CRM & loyalty", icon: "&#128101;", gradient: "from-pink-500 to-rose-500", border: "hover:border-pink-300", onclick: "openCrmModal()", show: true },
           { label: "Export Excel", desc: "Download laporan", icon: "&#128190;", gradient: "from-green-500 to-emerald-600", border: "hover:border-green-300", onclick: "exportToExcel()", show: hak.includes("laporan_keuangan") },
           { label: "QR Meja", desc: "Cetak QR code", icon: "&#128241;", gradient: "from-teal-500 to-cyan-500", border: "hover:border-teal-300", onclick: "openMejaQRModal()", show: true },
+          { label: "Pengeluaran", desc: "Biaya operasional", icon: "&#128184;", gradient: "from-red-500 to-rose-600", border: "hover:border-red-300", onclick: "openPengeluaranModal()", show: hak.includes("laporan_keuangan") },
           { label: "Kirim Promo", desc: "Push notif ke app", icon: "&#128227;", gradient: "from-fuchsia-500 to-purple-600", border: "hover:border-fuchsia-300", onclick: "openBroadcastModal()", show: hak.includes("setting_toko") },
           { label: "Setting Toko", desc: "Nama, alamat, dll", icon: "&#9881;", gradient: "from-slate-700 to-slate-900", border: "hover:border-slate-300", onclick: "openSettingToko()", show: hak.includes("setting_toko") },
           { label: "Audit Log", desc: "Riwayat aksi", icon: "&#128270;", gradient: "from-rose-500 to-red-700", border: "hover:border-rose-300", onclick: "openAuditLog()", show: hak.includes("audit_log") },
@@ -5676,22 +5774,9 @@
         }
       }
 
+      // Sekarang membuka Kas Opname modal dulu (tutup shift + hitung selisih uang laci)
       async function clockOutKaryawan(username) {
-        if (!confirm(`Clock out karyawan "${username}"?`)) return;
-        try {
-          const res = await fetch("/api/shift/clock-out", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-role": window._roleAsli || "admin" },
-            body: JSON.stringify({ username }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            showToast(`${username.toUpperCase()} CLOCK OUT! Omzet: Rp ${(data.shift.total_omzet || 0).toLocaleString('id-ID')}`);
-            loadShiftAktif();
-          } else {
-            alert(data.pesan || "Gagal clock out!");
-          }
-        } catch(e) { alert("Gagal terhubung ke server!"); }
+        await openKasOpname(username);
       }
 
       async function loadRiwayatShift() {
@@ -5748,7 +5833,40 @@
                     <p class="text-[8px] text-slate-400 font-bold uppercase">Omzet</p>
                     <p class="text-sm font-black text-orange-600">Rp ${(s.total_omzet || 0).toLocaleString('id-ID')}</p>
                   </div>
-                </div>` : ''}
+                </div>
+                ${s.kas_fisik != null ? (() => {
+                  const selisih = s.kas_selisih || 0;
+                  let boxCls, labelCls, valCls, label;
+                  if (selisih === 0) {
+                    boxCls = "mt-2 rounded-xl p-2.5 border bg-emerald-50 border-emerald-200";
+                    labelCls = "text-[9px] font-black text-emerald-700 uppercase tracking-widest";
+                    valCls = "text-[10px] font-black text-emerald-600";
+                    label = "✅ Pas";
+                  } else if (selisih > 0) {
+                    boxCls = "mt-2 rounded-xl p-2.5 border bg-blue-50 border-blue-200";
+                    labelCls = "text-[9px] font-black text-blue-700 uppercase tracking-widest";
+                    valCls = "text-[10px] font-black text-blue-600";
+                    label = "💰 Lebih";
+                  } else {
+                    boxCls = "mt-2 rounded-xl p-2.5 border bg-red-50 border-red-200";
+                    labelCls = "text-[9px] font-black text-red-700 uppercase tracking-widest";
+                    valCls = "text-[10px] font-black text-red-600";
+                    label = "⚠️ Kurang";
+                  }
+                  return `
+                    <div class="${boxCls}">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="${labelCls}">Kas Opname · ${label}</span>
+                        <span class="${valCls}">${selisih >= 0 ? '+' : '-'}Rp ${Math.abs(selisih).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div class="grid grid-cols-2 gap-1 text-[9px] text-slate-500">
+                        <span>Seharusnya: <span class="font-bold text-slate-700">Rp ${(s.kas_expected || 0).toLocaleString('id-ID')}</span></span>
+                        <span>Fisik: <span class="font-bold text-slate-700">Rp ${(s.kas_fisik || 0).toLocaleString('id-ID')}</span></span>
+                      </div>
+                      ${s.kas_catatan ? `<p class="text-[9px] italic text-slate-500 mt-1">"${s.kas_catatan}"</p>` : ''}
+                    </div>
+                  `;
+                })() : ''}` : ''}
               </div>`;
           }).join('');
         } catch(e) {
@@ -6563,6 +6681,225 @@
         } catch (e) {
           alert("Gagal terhubung ke server!");
         }
+      }
+
+      // ===== PENGELUARAN OPERASIONAL =====
+      let _penKategoriList = ["Bahan Baku", "Gaji Karyawan", "Listrik & Air", "Sewa Tempat", "Kemasan", "Peralatan", "Marketing", "Transportasi", "Lain-lain"];
+      function openPengeluaranModal() {
+        const hak = window._hakAkses || [];
+        if (!hak.includes("laporan_keuangan")) return alert("AKSES DITOLAK.");
+        const modal = document.getElementById("pengeluaran-modal");
+        modal.classList.remove("hidden"); modal.classList.add("flex");
+        const today = new Date().toISOString().split("T")[0];
+        document.getElementById("pen-filter-dari").value = today;
+        document.getElementById("pen-filter-sampai").value = today;
+        document.getElementById("pen-tanggal").value = today;
+        document.getElementById("pen-form").classList.add("hidden");
+        document.getElementById("pen-caret").textContent = "▼";
+        document.getElementById("pen-keterangan").value = "";
+        document.getElementById("pen-nominal").value = "";
+        loadPengeluaran();
+      }
+      function closePengeluaranModal() {
+        const m = document.getElementById("pengeluaran-modal");
+        m.classList.add("hidden"); m.classList.remove("flex");
+      }
+      function toggleTambahPengeluaran() {
+        const f = document.getElementById("pen-form");
+        const c = document.getElementById("pen-caret");
+        const isOpen = !f.classList.contains("hidden");
+        f.classList.toggle("hidden");
+        c.textContent = isOpen ? "▼" : "▲";
+      }
+      async function loadPengeluaran() {
+        const role = window._roleAsli || (userRole || "").toLowerCase();
+        const dari = document.getElementById("pen-filter-dari").value;
+        const sampai = document.getElementById("pen-filter-sampai").value;
+        try {
+          const [penRes, profitRes] = await Promise.all([
+            fetch(`/api/pengeluaran?tanggal_dari=${dari}&tanggal_sampai=${sampai}`, { headers: { "x-role": role } }),
+            fetch(`/api/profit-bersih?dari=${dari}&sampai=${sampai}`, { headers: { "x-role": role } }),
+          ]);
+          const penData = await penRes.json();
+          const profit = await profitRes.json();
+          if (!penData.success) return alert(penData.pesan || "Gagal load");
+          _penKategoriList = penData.kategori || _penKategoriList;
+          const selKat = document.getElementById("pen-kategori");
+          selKat.innerHTML = '<option value="">Pilih Kategori...</option>' + _penKategoriList.map(k => `<option value="${k}">${k}</option>`).join("");
+          renderPengeluaranSummary(profit, penData.grandTotal, penData.data.length);
+          renderPengeluaranList(penData.data);
+        } catch (e) { alert("Gagal terhubung ke server."); }
+      }
+      function renderPengeluaranSummary(profit, totalPengeluaran, count) {
+        const omzet = profit.omzet || 0;
+        const pengeluaran = profit.pengeluaran || 0;
+        const bersih = profit.profit_bersih || 0;
+        const margin = profit.margin || 0;
+        const bersihColor = bersih >= 0 ? "from-emerald-500 to-green-600" : "from-rose-500 to-red-600";
+        document.getElementById("pengeluaran-summary").innerHTML = `
+          <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-3">
+            <p class="text-[9px] font-black text-blue-600 uppercase mb-1">Omzet</p>
+            <p class="font-black text-sm text-slate-800">Rp ${omzet.toLocaleString("id-ID")}</p>
+          </div>
+          <div class="bg-gradient-to-br from-red-50 to-rose-50 border border-red-100 rounded-2xl p-3">
+            <p class="text-[9px] font-black text-red-600 uppercase mb-1">Pengeluaran</p>
+            <p class="font-black text-sm text-slate-800">Rp ${pengeluaran.toLocaleString("id-ID")}</p>
+          </div>
+          <div class="bg-gradient-to-br ${bersihColor} text-white border border-white/30 rounded-2xl p-3">
+            <p class="text-[9px] font-black uppercase mb-1 opacity-90">Profit Bersih</p>
+            <p class="font-black text-sm">Rp ${bersih.toLocaleString("id-ID")}</p>
+            <p class="text-[9px] font-bold opacity-80 mt-0.5">${margin}% margin</p>
+          </div>`;
+        document.getElementById("pen-count").textContent = count;
+      }
+      function renderPengeluaranList(rows) {
+        const list = document.getElementById("pen-list");
+        if (rows.length === 0) {
+          list.innerHTML = '<p class="text-center text-slate-400 text-sm py-8">Belum ada pengeluaran di periode ini.</p>';
+          return;
+        }
+        const KAT_ICON = { "Bahan Baku": "📦", "Gaji Karyawan": "💼", "Listrik & Air": "💡", "Sewa Tempat": "🏠", "Kemasan": "🛍️", "Peralatan": "🔧", "Marketing": "📢", "Transportasi": "🚗", "Lain-lain": "📌" };
+        list.innerHTML = rows.map(r => `
+          <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-xl border border-slate-200 flex-shrink-0">${KAT_ICON[r.kategori] || "📌"}</div>
+            <div class="flex-1 min-w-0">
+              <p class="font-black text-sm text-slate-800 truncate">${r.kategori}</p>
+              <p class="text-xs text-slate-500 truncate">${r.keterangan || "-"}</p>
+              <p class="text-[10px] text-slate-400 font-semibold">${r.tanggal} · oleh ${r.dibuat_oleh}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="font-black text-sm text-red-600">-Rp ${r.nominal.toLocaleString("id-ID")}</p>
+              <button onclick="hapusPengeluaran(${r.id}, ${r.nominal})" class="mt-1 text-[10px] text-red-400 hover:text-red-600 font-bold">🗑️ Hapus</button>
+            </div>
+          </div>
+        `).join("");
+      }
+      async function submitPengeluaran() {
+        const role = window._roleAsli || (userRole || "").toLowerCase();
+        const user = currentUser || "admin";
+        const tanggal = document.getElementById("pen-tanggal").value;
+        const kategori = document.getElementById("pen-kategori").value;
+        const keterangan = document.getElementById("pen-keterangan").value.trim();
+        const nominal = parseInt(document.getElementById("pen-nominal").value);
+        if (!kategori) return alert("Pilih kategori!");
+        if (!nominal || nominal <= 0) return alert("Nominal harus > 0!");
+        try {
+          const res = await fetch("/api/pengeluaran", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-role": role, "x-user": user },
+            body: JSON.stringify({ tanggal, kategori, keterangan, nominal }),
+          });
+          const data = await res.json();
+          if (!data.success) return alert(data.pesan || "Gagal!");
+          document.getElementById("pen-keterangan").value = "";
+          document.getElementById("pen-nominal").value = "";
+          showToast("PENGELUARAN TERSIMPAN!");
+          loadPengeluaran();
+        } catch (e) { alert("Gagal terhubung ke server."); }
+      }
+      async function hapusPengeluaran(id, nominal) {
+        if (!confirm(`Hapus pengeluaran Rp ${nominal.toLocaleString("id-ID")}?`)) return;
+        const role = window._roleAsli || (userRole || "").toLowerCase();
+        const user = currentUser || "admin";
+        try {
+          const res = await fetch("/api/pengeluaran/" + id, {
+            method: "DELETE",
+            headers: { "x-role": role, "x-user": user },
+          });
+          const data = await res.json();
+          if (!data.success) return alert(data.pesan || "Gagal!");
+          showToast("PENGELUARAN DIHAPUS!");
+          loadPengeluaran();
+        } catch (e) { alert("Gagal terhubung ke server."); }
+      }
+
+      // ===== KAS OPNAME (saat tutup shift) =====
+      let _kasOpnameState = { username: "", expected: 0, trx: 0, omzet: 0 };
+      async function openKasOpname(username) {
+        try {
+          const res = await fetch(`/api/shift/kas-preview/${encodeURIComponent(username)}`);
+          const data = await res.json();
+          if (!data.success) return alert(data.pesan || "Shift tidak aktif.");
+          _kasOpnameState = {
+            username,
+            expected: data.kas_expected || 0,
+            trx: data.total_transaksi || 0,
+            omzet: data.total_omzet || 0,
+          };
+          document.getElementById("kas-username").textContent = username;
+          document.getElementById("kas-expected").textContent = `Rp ${_kasOpnameState.expected.toLocaleString("id-ID")}`;
+          document.getElementById("kas-omzet").textContent = `Rp ${_kasOpnameState.omzet.toLocaleString("id-ID")}`;
+          document.getElementById("kas-trx-count").textContent = _kasOpnameState.trx;
+          document.getElementById("kas-fisik").value = "";
+          document.getElementById("kas-catatan").value = "";
+          document.getElementById("kas-selisih-box").classList.add("hidden");
+          const m = document.getElementById("kas-opname-modal");
+          m.classList.remove("hidden"); m.classList.add("flex");
+        } catch (e) { alert("Gagal load shift."); }
+      }
+      function closeKasOpname() {
+        const m = document.getElementById("kas-opname-modal");
+        m.classList.add("hidden"); m.classList.remove("flex");
+      }
+      function updateKasSelisih() {
+        const fisik = parseInt(document.getElementById("kas-fisik").value) || 0;
+        const box = document.getElementById("kas-selisih-box");
+        const label = document.getElementById("kas-selisih-label");
+        const value = document.getElementById("kas-selisih-value");
+        const note = document.getElementById("kas-selisih-note");
+        if (document.getElementById("kas-fisik").value === "") { box.classList.add("hidden"); return; }
+        box.classList.remove("hidden");
+        const selisih = fisik - _kasOpnameState.expected;
+        if (selisih === 0) {
+          box.className = "rounded-2xl p-3 mb-4 text-center bg-emerald-50 border border-emerald-200";
+          label.className = "text-[10px] font-black uppercase tracking-widest mb-1 text-emerald-700";
+          label.textContent = "✅ Pas";
+          value.className = "font-black text-xl text-emerald-600";
+          value.textContent = "Rp 0";
+          note.textContent = "Uang di laci sesuai catatan.";
+          note.className = "text-[10px] font-semibold mt-1 text-emerald-600";
+        } else if (selisih > 0) {
+          box.className = "rounded-2xl p-3 mb-4 text-center bg-blue-50 border border-blue-200";
+          label.className = "text-[10px] font-black uppercase tracking-widest mb-1 text-blue-700";
+          label.textContent = "💰 Lebih";
+          value.className = "font-black text-xl text-blue-600";
+          value.textContent = `+Rp ${selisih.toLocaleString("id-ID")}`;
+          note.textContent = "Kelebihan uang di laci.";
+          note.className = "text-[10px] font-semibold mt-1 text-blue-600";
+        } else {
+          box.className = "rounded-2xl p-3 mb-4 text-center bg-red-50 border border-red-200";
+          label.className = "text-[10px] font-black uppercase tracking-widest mb-1 text-red-700";
+          label.textContent = "⚠️ Kurang";
+          value.className = "font-black text-xl text-red-600";
+          value.textContent = `-Rp ${Math.abs(selisih).toLocaleString("id-ID")}`;
+          note.textContent = "Uang di laci lebih sedikit dari seharusnya.";
+          note.className = "text-[10px] font-semibold mt-1 text-red-600";
+        }
+      }
+      async function submitKasOpname() {
+        const fisikStr = document.getElementById("kas-fisik").value;
+        const fisik = fisikStr === "" ? null : parseInt(fisikStr);
+        const catatan = document.getElementById("kas-catatan").value.trim();
+        const role = window._roleAsli || (userRole || "").toLowerCase();
+        if (fisik != null && !confirm(`Tutup shift ${_kasOpnameState.username} dengan kas fisik Rp ${fisik.toLocaleString("id-ID")}?`)) return;
+        try {
+          const res = await fetch("/api/shift/clock-out", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-role": role },
+            body: JSON.stringify({ username: _kasOpnameState.username, kas_fisik: fisik, catatan }),
+          });
+          const data = await res.json();
+          if (!data.success) return alert(data.pesan || "Gagal tutup shift!");
+          closeKasOpname();
+          const s = data.shift;
+          const omzet = (s?.total_omzet || 0).toLocaleString("id-ID");
+          let msg = `${_kasOpnameState.username.toUpperCase()} SHIFT DITUTUP! Omzet Rp ${omzet}`;
+          if (s && s.kas_selisih != null && s.kas_selisih !== 0) {
+            msg += s.kas_selisih > 0 ? ` (Lebih Rp ${s.kas_selisih.toLocaleString("id-ID")})` : ` (Kurang Rp ${Math.abs(s.kas_selisih).toLocaleString("id-ID")})`;
+          }
+          showToast(msg);
+          if (typeof loadShiftAktif === "function") loadShiftAktif();
+        } catch (e) { alert("Gagal terhubung ke server."); }
       }
 
       // ===== BROADCAST PROMO =====

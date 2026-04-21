@@ -172,6 +172,26 @@ db.exec(`
   );
 `);
 
+// Tabel pengeluaran operasional (buat profit bersih)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS pengeluaran (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tanggal TEXT NOT NULL,
+    kategori TEXT NOT NULL,
+    keterangan TEXT DEFAULT '',
+    nominal INTEGER NOT NULL,
+    dibuat_oleh TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_pengeluaran_tanggal ON pengeluaran(tanggal)"); } catch(e) {}
+
+// Kas opname: tambah kolom di shift_log
+try { db.exec("ALTER TABLE shift_log ADD COLUMN kas_fisik INTEGER DEFAULT NULL"); } catch(e) {}
+try { db.exec("ALTER TABLE shift_log ADD COLUMN kas_expected INTEGER DEFAULT NULL"); } catch(e) {}
+try { db.exec("ALTER TABLE shift_log ADD COLUMN kas_selisih INTEGER DEFAULT NULL"); } catch(e) {}
+try { db.exec("ALTER TABLE shift_log ADD COLUMN kas_catatan TEXT DEFAULT ''"); } catch(e) {}
+
 // Tabel pesanan online & QR meja (tracking semua pesanan masuk)
 db.exec(`
   CREATE TABLE IF NOT EXISTS pesanan_online (
@@ -738,6 +758,94 @@ app.post("/api/broadcast-promo", async (req, res) => {
   res.json({ success: true, sent, failed, total: subs.length });
 });
 
+// ============================================
+// PENGELUARAN OPERASIONAL — admin & owner
+// ============================================
+const PENGELUARAN_KATEGORI = [
+  "Bahan Baku", "Gaji Karyawan", "Listrik & Air", "Sewa Tempat",
+  "Kemasan", "Peralatan", "Marketing", "Transportasi", "Lain-lain",
+];
+
+// GET list pengeluaran (filter tanggal & kategori opsional)
+app.get("/api/pengeluaran", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!role || !["admin", "owner"].includes(role)) {
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  }
+  const { tanggal_dari, tanggal_sampai, kategori } = req.query;
+  const today = new Date().toISOString().split("T")[0];
+  const dari = tanggal_dari || today;
+  const sampai = tanggal_sampai || today;
+  let sql = "SELECT * FROM pengeluaran WHERE tanggal BETWEEN ? AND ?";
+  const params = [dari, sampai];
+  if (kategori && kategori !== "semua") { sql += " AND kategori = ?"; params.push(kategori); }
+  sql += " ORDER BY tanggal DESC, id DESC";
+  const rows = db.prepare(sql).all(...params);
+  const totals = db.prepare(
+    "SELECT kategori, COALESCE(SUM(nominal),0) as total FROM pengeluaran WHERE tanggal BETWEEN ? AND ? GROUP BY kategori ORDER BY total DESC"
+  ).all(dari, sampai);
+  const grandTotal = rows.reduce((s, r) => s + r.nominal, 0);
+  res.json({ success: true, data: rows, totals, grandTotal, kategori: PENGELUARAN_KATEGORI });
+});
+
+// POST tambah pengeluaran
+app.post("/api/pengeluaran", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!role || !["admin", "owner"].includes(role)) {
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  }
+  const { tanggal, kategori, keterangan, nominal } = req.body;
+  const tgl = tanggal || new Date().toISOString().split("T")[0];
+  const nom = parseInt(nominal);
+  if (!kategori || !nom || nom <= 0) {
+    return res.status(400).json({ success: false, pesan: "Kategori & nominal (>0) wajib." });
+  }
+  const user = req.headers["x-user"] || role;
+  const result = db.prepare(
+    "INSERT INTO pengeluaran (tanggal, kategori, keterangan, nominal, dibuat_oleh) VALUES (?, ?, ?, ?, ?)"
+  ).run(tgl, kategori, (keterangan || "").slice(0, 200), nom, user);
+  logAudit(user, role, "tambah_pengeluaran", `${kategori}: Rp ${nom.toLocaleString("id-ID")} — ${keterangan || "-"}`);
+  res.json({ success: true, id: result.lastInsertRowid });
+});
+
+// DELETE pengeluaran
+app.delete("/api/pengeluaran/:id", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!role || !["admin", "owner"].includes(role)) {
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  }
+  const row = db.prepare("SELECT * FROM pengeluaran WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ success: false, pesan: "Tidak ditemukan." });
+  db.prepare("DELETE FROM pengeluaran WHERE id = ?").run(req.params.id);
+  logAudit(req.headers["x-user"] || role, role, "hapus_pengeluaran", `${row.kategori}: Rp ${row.nominal.toLocaleString("id-ID")}`);
+  res.json({ success: true });
+});
+
+// GET profit bersih per periode (omzet - pengeluaran)
+app.get("/api/profit-bersih", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!role || !["admin", "owner"].includes(role)) {
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  }
+  const today = new Date().toISOString().split("T")[0];
+  const dari = req.query.dari || today;
+  const sampai = req.query.sampai || today;
+  const omzet = db.prepare(
+    "SELECT COALESCE(SUM(total),0) as total FROM transaksi WHERE date(created_at,'localtime') BETWEEN ? AND ?"
+  ).get(dari, sampai).total;
+  const pengeluaran = db.prepare(
+    "SELECT COALESCE(SUM(nominal),0) as total FROM pengeluaran WHERE tanggal BETWEEN ? AND ?"
+  ).get(dari, sampai).total;
+  res.json({
+    success: true,
+    periode: { dari, sampai },
+    omzet,
+    pengeluaran,
+    profit_bersih: omzet - pengeluaran,
+    margin: omzet > 0 ? Math.round(((omzet - pengeluaran) / omzet) * 100) : 0,
+  });
+});
+
 // API: hapus menu — hanya admin & owner
 app.delete("/api/menu/:id", (req, res) => {
   const role = req.headers["x-role"];
@@ -1164,17 +1272,34 @@ function hitungOmzetShift(username, clockInIso, clockOutIso) {
   const params = clockOutLocal
     ? [username, clockInLocal, clockOutLocal]
     : [username, clockInLocal];
-  return db.prepare(
-    `SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as omzet FROM transaksi WHERE ${whereClause}`,
+  const total = db.prepare(
+    `SELECT COUNT(*) as trx, COALESCE(SUM(total),0) as omzet,
+            COALESCE(SUM(CASE WHEN LOWER(metode) = 'tunai' THEN total ELSE 0 END),0) as kas_tunai
+     FROM transaksi WHERE ${whereClause}`,
   ).get(...params);
+  return total;
 }
 
-// Helper: close shift aktif dan hitung omzetnya
-function closeShift(shiftRow, clockOutIso) {
+// Helper: close shift aktif, hitung omzet, + kas opname opsional
+function closeShift(shiftRow, clockOutIso, kasOpname) {
   const trxData = hitungOmzetShift(shiftRow.username, shiftRow.clock_in, clockOutIso);
+  if (kasOpname && kasOpname.kas_fisik != null) {
+    const kasExpected = trxData.kas_tunai || 0;
+    const kasFisik = parseInt(kasOpname.kas_fisik) || 0;
+    const selisih = kasFisik - kasExpected;
+    db.prepare(
+      `UPDATE shift_log
+       SET clock_out = ?, total_transaksi = ?, total_omzet = ?,
+           kas_fisik = ?, kas_expected = ?, kas_selisih = ?, kas_catatan = ?,
+           status = 'selesai'
+       WHERE id = ?`,
+    ).run(clockOutIso, trxData.trx, trxData.omzet, kasFisik, kasExpected, selisih, kasOpname.catatan || "", shiftRow.id);
+    return { ...trxData, kas_fisik: kasFisik, kas_expected: kasExpected, kas_selisih: selisih };
+  }
   db.prepare(
     "UPDATE shift_log SET clock_out = ?, total_transaksi = ?, total_omzet = ?, status = 'selesai' WHERE id = ?",
   ).run(clockOutIso, trxData.trx, trxData.omzet, shiftRow.id);
+  return trxData;
 }
 
 app.post("/api/shift/clock-in", (req, res) => {
@@ -1237,13 +1362,13 @@ app.post("/api/shift/clock-in", (req, res) => {
   res.json({ success: true, shift: newShift });
 });
 
-// Clock Out
+// Clock Out (support kas opname: kas_fisik + catatan opsional)
 app.post("/api/shift/clock-out", (req, res) => {
   const role = req.headers["x-role"];
   if (!role || !["admin", "owner", "kasir"].includes(role)) {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
-  const { username } = req.body;
+  const { username, kas_fisik, catatan } = req.body;
   const existing = db
     .prepare("SELECT * FROM shift_log WHERE username = ? AND status = 'aktif'")
     .get(username);
@@ -1251,13 +1376,30 @@ app.post("/api/shift/clock-out", (req, res) => {
     return res.status(400).json({ success: false, pesan: "Belum clock in." });
 
   const nowIso = new Date().toISOString();
-  closeShift(existing, nowIso);
+  const opname = (kas_fisik != null && kas_fisik !== "") ? { kas_fisik, catatan } : null;
+  closeShift(existing, nowIso, opname);
 
   const updated = db
     .prepare("SELECT * FROM shift_log WHERE id = ?")
     .get(existing.id);
-  console.log(`[SHIFT] ${username} clock-out shift ${existing.shift}`);
+  console.log(`[SHIFT] ${username} clock-out shift ${existing.shift}${opname ? ` (opname: ${opname.kas_fisik})` : ''}`);
   res.json({ success: true, shift: updated });
+});
+
+// Preview kas expected (tunai) untuk shift aktif — sebelum tutup shift
+app.get("/api/shift/kas-preview/:username", (req, res) => {
+  const row = db
+    .prepare("SELECT * FROM shift_log WHERE LOWER(username) = LOWER(?) AND status = 'aktif'")
+    .get(req.params.username);
+  if (!row) return res.json({ success: false, pesan: "Shift tidak aktif." });
+  const trxData = hitungOmzetShift(row.username, row.clock_in, new Date().toISOString());
+  res.json({
+    success: true,
+    shift: row,
+    total_transaksi: trxData.trx,
+    total_omzet: trxData.omzet,
+    kas_expected: trxData.kas_tunai,
+  });
 });
 
 // Get shift aktif
