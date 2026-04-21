@@ -2168,6 +2168,13 @@
               + TAMBAH
             </button>
           </div>
+          <div class="flex items-center gap-3 mt-2">
+            <div id="new-menu-foto-preview" class="w-14 h-14 rounded-xl bg-white border-2 border-orange-100 flex items-center justify-center text-2xl flex-shrink-0">📷</div>
+            <label class="flex-1 cursor-pointer">
+              <input type="file" accept="image/*" id="new-menu-foto" onchange="handleNewMenuFoto(event)" class="hidden" />
+              <span class="block px-3 py-2 rounded-xl bg-white border-2 border-orange-100 font-semibold text-xs text-orange-600 text-center hover:border-orange-400 transition-all">📸 Pilih Foto Menu (opsional)</span>
+            </label>
+          </div>
         </div>
 
         <div
@@ -2629,6 +2636,59 @@
       </div>
     </div>
 
+    <!-- ==================== BROADCAST PROMO MODAL ==================== -->
+    <div id="broadcast-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[110] p-4 backdrop-blur-sm">
+      <div class="bg-white w-full max-w-[480px] rounded-[24px] sm:rounded-[30px] p-5 sm:p-8 shadow-2xl max-h-[90vh] flex flex-col modal-content">
+        <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-purple-600 flex items-center justify-center shadow-lg shadow-fuchsia-500/20">
+              <span class="text-xl text-white">📣</span>
+            </div>
+            <div>
+              <h3 class="font-black text-slate-800 text-lg uppercase tracking-tight">Kirim Promo</h3>
+              <p class="text-[10px] text-slate-400 font-bold tracking-widest">PUSH NOTIFICATION</p>
+            </div>
+          </div>
+          <button onclick="closeBroadcastModal()" class="bg-slate-100 hover:bg-red-50 hover:text-red-500 p-3 rounded-xl transition-all text-slate-400 active:scale-90">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="space-y-4 overflow-y-auto">
+          <div class="bg-fuchsia-50 border border-fuchsia-200 rounded-2xl p-3.5">
+            <p class="text-[11px] font-bold text-fuchsia-700 mb-1">💡 Tips bikin promo yg engaging:</p>
+            <p class="text-[10px] text-fuchsia-600/80 leading-relaxed">Gunakan emoji, tulis manfaat/diskon di judul, dan kasih urgency (misal "hanya hari ini!").</p>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Judul Notifikasi <span class="text-slate-400 normal-case">(max 80 karakter)</span></label>
+            <input type="text" id="broadcast-title" maxlength="80" placeholder="🎉 Diskon 20% Hari Ini!" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-fuchsia-500 transition-all" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Isi Pesan <span class="text-slate-400 normal-case">(max 200 karakter)</span></label>
+            <textarea id="broadcast-body" maxlength="200" rows="3" placeholder="Pakai kode HEMAT20 buat diskon 20% semua menu kopi. Berlaku hingga 22:00!" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-semibold text-sm outline-none focus:border-fuchsia-500 transition-all resize-none"></textarea>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Link (opsional)</label>
+            <input type="text" id="broadcast-url" placeholder="/app (default) atau /app?promo=HEMAT20" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-semibold text-sm outline-none focus:border-fuchsia-500 transition-all" />
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <p class="text-[10px] font-bold text-slate-500 mb-2">📱 Preview:</p>
+            <div class="bg-white rounded-xl p-3 border border-slate-200 flex gap-2.5">
+              <img src="/public/soluna.png" class="w-9 h-9 rounded-lg flex-shrink-0 object-contain bg-slate-50 p-1" alt="" />
+              <div class="min-w-0">
+                <p class="text-[11px] font-black text-slate-700 truncate" id="broadcast-preview-title">Judul Promo</p>
+                <p class="text-[10px] text-slate-500 line-clamp-2" id="broadcast-preview-body">Isi pesan promo...</p>
+                <p class="text-[9px] text-slate-400 font-bold mt-0.5">Cafe Soluna · baru saja</p>
+              </div>
+            </div>
+          </div>
+          <button id="broadcast-send-btn" onclick="sendBroadcast()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-fuchsia-500/30 hover:shadow-xl active:scale-95 transition-all">
+            📣 Kirim ke Semua Pelanggan
+          </button>
+          <p id="broadcast-result" class="text-xs font-bold text-center hidden"></p>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== SETTING TOKO MODAL ==================== -->
     <div id="setting-toko-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[110] p-4 backdrop-blur-sm">
       <div class="bg-white w-full max-w-[480px] rounded-[24px] sm:rounded-[30px] p-5 sm:p-8 shadow-2xl max-h-[90vh] flex flex-col modal-content">
@@ -2854,6 +2914,9 @@
             price: r.harga,
             stock: r.stok ?? 50,
             category: r.kategori,
+            foto: r.foto || "",
+            avg_rating: r.avg_rating || null,
+            review_count: r.review_count || 0,
           }));
         } catch (e) {
           console.error("Gagal load menu:", e);
@@ -3256,6 +3319,7 @@
           { label: "Pelanggan", desc: "CRM & loyalty", icon: "&#128101;", gradient: "from-pink-500 to-rose-500", border: "hover:border-pink-300", onclick: "openCrmModal()", show: true },
           { label: "Export Excel", desc: "Download laporan", icon: "&#128190;", gradient: "from-green-500 to-emerald-600", border: "hover:border-green-300", onclick: "exportToExcel()", show: hak.includes("laporan_keuangan") },
           { label: "QR Meja", desc: "Cetak QR code", icon: "&#128241;", gradient: "from-teal-500 to-cyan-500", border: "hover:border-teal-300", onclick: "openMejaQRModal()", show: true },
+          { label: "Kirim Promo", desc: "Push notif ke app", icon: "&#128227;", gradient: "from-fuchsia-500 to-purple-600", border: "hover:border-fuchsia-300", onclick: "openBroadcastModal()", show: hak.includes("setting_toko") },
           { label: "Setting Toko", desc: "Nama, alamat, dll", icon: "&#9881;", gradient: "from-slate-700 to-slate-900", border: "hover:border-slate-300", onclick: "openSettingToko()", show: hak.includes("setting_toko") },
           { label: "Audit Log", desc: "Riwayat aksi", icon: "&#128270;", gradient: "from-rose-500 to-red-700", border: "hover:border-rose-300", onclick: "openAuditLog()", show: hak.includes("audit_log") },
           { label: "Reset Omzet", desc: "Hapus data", icon: "&#128260;", gradient: "from-red-500 to-red-700", border: "hover:border-red-300", onclick: "openResetModal()", show: hak.includes("reset_omzet") },
@@ -3577,9 +3641,9 @@
             class="menu-card p-4 sm:p-5 rounded-2xl sm:rounded-3xl cursor-pointer flex flex-col justify-between h-[155px] sm:h-[165px] ${oos ? "out-of-stock opacity-40 grayscale cursor-not-allowed" : ""}">
             <div>
               <div class="flex justify-between items-start mb-2">
-                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center border border-orange-100/50">
-                  <span class="emoji-icon text-xl sm:text-2xl">${emoji}</span>
-                </div>
+                ${item.foto
+                  ? `<div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden border border-orange-100/50"><img src="${item.foto}" class="w-full h-full object-cover" alt="" /></div>`
+                  : `<div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center border border-orange-100/50"><span class="emoji-icon text-xl sm:text-2xl">${emoji}</span></div>`}
                 ${
                   oos
                     ? '<span class="text-[8px] bg-red-500 text-white px-2.5 py-1 rounded-full font-bold animate-pulse shadow-sm shadow-red-500/20">HABIS</span>'
@@ -3587,6 +3651,7 @@
                 }
               </div>
               <h4 class="menu-name font-extrabold text-slate-800 text-[11px] sm:text-xs uppercase leading-tight">${item.name}</h4>
+              ${item.avg_rating ? `<div class="flex items-center gap-1 mt-0.5"><span class="text-amber-500 text-[10px]">⭐</span><span class="text-[9px] font-bold text-slate-600">${item.avg_rating}</span><span class="text-[8px] text-slate-400">(${item.review_count})</span></div>` : ''}
             </div>
             <div class="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
               <p class="menu-price text-orange-600 font-black text-sm sm:text-base">Rp ${item.price.toLocaleString("id-ID")}</p>
@@ -6157,6 +6222,98 @@
       }
 
       // ===== STOK MANAGEMENT =====
+      // ===== IMAGE COMPRESSION UTIL =====
+      // Compress + resize jadi WebP <150KB sebelum upload ke DB
+      function compressImage(file, maxSize = 400, quality = 0.78) {
+        return new Promise((resolve, reject) => {
+          if (!file || !file.type.startsWith("image/")) return reject(new Error("Bukan file gambar"));
+          if (file.size > 10 * 1024 * 1024) return reject(new Error("File terlalu besar (max 10MB)"));
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+              const w = Math.round(img.width * scale);
+              const h = Math.round(img.height * scale);
+              const canvas = document.createElement("canvas");
+              canvas.width = w; canvas.height = h;
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(img, 0, 0, w, h);
+              // Coba WebP dulu (lebih kecil), fallback JPEG
+              const dataUrl = canvas.toDataURL("image/webp", quality);
+              const finalUrl = dataUrl.startsWith("data:image/webp")
+                ? dataUrl
+                : canvas.toDataURL("image/jpeg", quality);
+              resolve(finalUrl);
+            };
+            img.onerror = () => reject(new Error("Gagal memuat gambar"));
+            img.src = e.target.result;
+          };
+          reader.onerror = () => reject(new Error("Gagal membaca file"));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      let newMenuFotoData = "";
+      async function handleNewMenuFoto(ev) {
+        const file = ev.target.files[0];
+        if (!file) return;
+        try {
+          const compressed = await compressImage(file);
+          newMenuFotoData = compressed;
+          document.getElementById("new-menu-foto-preview").innerHTML =
+            `<img src="${compressed}" class="w-full h-full object-cover rounded-xl" />`;
+        } catch (e) {
+          alert("Gagal: " + e.message);
+        }
+      }
+
+      async function uploadFotoMenu(id, nama) {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = async (ev) => {
+          const file = ev.target.files[0];
+          if (!file) return;
+          try {
+            const compressed = await compressImage(file);
+            const role = window._roleAsli || (userRole || "").toLowerCase();
+            const res = await fetch(`/api/menu/${id}/foto`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", "x-role": role },
+              body: JSON.stringify({ foto: compressed }),
+            });
+            const data = await res.json();
+            if (!data.success) return alert(data.pesan || "Gagal upload foto!");
+            await loadMenuFromServer();
+            renderMenu(menuData);
+            renderStokList();
+            showToast("FOTO TERSIMPAN!");
+          } catch (e) {
+            alert("Gagal: " + e.message);
+          }
+        };
+        input.click();
+      }
+
+      async function hapusFotoMenu(id) {
+        if (!confirm("Hapus foto menu ini?")) return;
+        const role = window._roleAsli || (userRole || "").toLowerCase();
+        try {
+          const res = await fetch(`/api/menu/${id}/foto`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "x-role": role },
+            body: JSON.stringify({ foto: "" }),
+          });
+          const data = await res.json();
+          if (!data.success) return alert(data.pesan || "Gagal!");
+          await loadMenuFromServer();
+          renderMenu(menuData);
+          renderStokList();
+          showToast("FOTO DIHAPUS!");
+        } catch (e) { alert("Gagal terhubung ke server!"); }
+      }
+
       function openStokModal() {
         const modal = document.getElementById("stok-modal");
         modal.classList.remove("hidden");
@@ -6174,13 +6331,20 @@
         list.innerHTML = menuData
           .map((item) => {
             const emoji = categoryEmoji[item.category] || "&#127860;";
+            const thumb = item.foto
+              ? `<img src="${item.foto}" class="w-11 h-11 rounded-lg object-cover flex-shrink-0" alt="" />`
+              : `<span class="text-xl w-11 h-11 flex items-center justify-center flex-shrink-0">${emoji}</span>`;
             return `
-          <div class="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-100 hover:border-orange-200 transition-all">
+          <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100 hover:border-orange-200 transition-all">
             <div class="flex items-center space-x-3 flex-1 min-w-0 mr-3">
-              <span class="text-xl">${emoji}</span>
-              <div class="min-w-0">
+              ${thumb}
+              <div class="min-w-0 flex-1">
                 <p class="font-extrabold text-[10px] text-slate-800 uppercase truncate">${item.name}</p>
                 <p class="text-[8px] font-bold text-slate-400">Rp ${item.price.toLocaleString("id-ID")}</p>
+                <div class="flex gap-1 mt-1">
+                  <button onclick="uploadFotoMenu(${item.id})" class="text-[8px] font-black text-blue-600 hover:underline">${item.foto ? '🔄 Ganti Foto' : '📸 Upload Foto'}</button>
+                  ${item.foto ? `<button onclick="hapusFotoMenu(${item.id})" class="text-[8px] font-black text-red-500 hover:underline">🗑️ Hapus</button>` : ''}
+                </div>
               </div>
             </div>
             <div class="flex items-center space-x-1.5">
@@ -6244,7 +6408,7 @@
           const res = await fetch("/api/menu", {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-role": role },
-            body: JSON.stringify({ nama, harga, kategori, stok }),
+            body: JSON.stringify({ nama, harga, kategori, stok, foto: newMenuFotoData }),
           });
           const data = await res.json();
           if (!data.success) return alert(data.pesan || "Gagal menambah menu!");
@@ -6252,6 +6416,9 @@
           document.getElementById("new-menu-harga").value = "";
           document.getElementById("new-menu-kategori").value = "";
           document.getElementById("new-menu-stok").value = "50";
+          document.getElementById("new-menu-foto").value = "";
+          document.getElementById("new-menu-foto-preview").innerHTML = "📷";
+          newMenuFotoData = "";
           await loadMenuFromServer();
           renderMenu(menuData);
           renderStokList();
@@ -6348,6 +6515,61 @@
           if (typeof renderAdminDashboard === 'function') renderAdminDashboard();
         } catch (e) {
           alert("Gagal terhubung ke server!");
+        }
+      }
+
+      // ===== BROADCAST PROMO =====
+      function openBroadcastModal() {
+        const hak = window._hakAkses || [];
+        if (!hak.includes("setting_toko")) return alert("AKSES DITOLAK.");
+        const modal = document.getElementById("broadcast-modal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        document.getElementById("broadcast-title").value = "";
+        document.getElementById("broadcast-body").value = "";
+        document.getElementById("broadcast-url").value = "";
+        document.getElementById("broadcast-result").classList.add("hidden");
+        document.getElementById("broadcast-preview-title").textContent = "Judul Promo";
+        document.getElementById("broadcast-preview-body").textContent = "Isi pesan promo...";
+        // Attach live-preview
+        const t = document.getElementById("broadcast-title");
+        const b = document.getElementById("broadcast-body");
+        t.oninput = () => { document.getElementById("broadcast-preview-title").textContent = t.value || "Judul Promo"; };
+        b.oninput = () => { document.getElementById("broadcast-preview-body").textContent = b.value || "Isi pesan promo..."; };
+      }
+      function closeBroadcastModal() {
+        const modal = document.getElementById("broadcast-modal");
+        modal.classList.add("hidden"); modal.classList.remove("flex");
+      }
+      async function sendBroadcast() {
+        const title = document.getElementById("broadcast-title").value.trim();
+        const body = document.getElementById("broadcast-body").value.trim();
+        const url = document.getElementById("broadcast-url").value.trim();
+        if (!title) return alert("Judul wajib diisi!");
+        if (!body) return alert("Isi pesan wajib diisi!");
+        if (!confirm(`Kirim notifikasi "${title}" ke SEMUA pelanggan yg sudah install app?`)) return;
+        const btn = document.getElementById("broadcast-send-btn");
+        const result = document.getElementById("broadcast-result");
+        btn.disabled = true; btn.innerHTML = "📤 Mengirim...";
+        const role = window._roleAsli || (userRole || "").toLowerCase();
+        try {
+          const res = await fetch("/api/broadcast-promo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-role": role },
+            body: JSON.stringify({ title, body, url: url || "/app" }),
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.pesan || "Gagal kirim");
+          result.className = "text-xs font-bold text-center text-emerald-600";
+          result.textContent = `✅ Terkirim ke ${data.sent} pelanggan (${data.failed} gagal, total subscriber: ${data.total})`;
+          result.classList.remove("hidden");
+          showToast("PROMO TERKIRIM!");
+        } catch (e) {
+          result.className = "text-xs font-bold text-center text-red-600";
+          result.textContent = "❌ " + (e.message || "Gagal kirim");
+          result.classList.remove("hidden");
+        } finally {
+          btn.disabled = false; btn.innerHTML = "📣 Kirim ke Semua Pelanggan";
         }
       }
 
@@ -6778,6 +7000,9 @@
             price: r.harga,
             stock: r.stok ?? 50,
             category: r.kategori,
+            foto: r.foto || "",
+            avg_rating: r.avg_rating || null,
+            review_count: r.review_count || 0,
           }));
           renderMenu(menuData);
         }
@@ -6825,6 +7050,9 @@
             price: r.harga,
             stock: r.stok ?? 50,
             category: r.kategori,
+            foto: r.foto || "",
+            avg_rating: r.avg_rating || null,
+            review_count: r.review_count || 0,
           }));
           renderMenu(menuData);
         }

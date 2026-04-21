@@ -20,7 +20,8 @@ webPush.setVapidDetails("mailto:warkop@urban.local", VAPID_PUBLIC, VAPID_PRIVATE
 // Simpan push subscriptions per meja
 const pushSubscriptions = {}; // { meja: [subscription, ...] }
 
-app.use(express.json());
+// Limit 2MB: foto menu ~150KB + margin untuk payload lain
+app.use(express.json({ limit: "2mb" }));
 
 // ============================================
 // 1. KONFIGURASI ROLE & AKUN
@@ -141,6 +142,35 @@ try {
 try { db.exec("ALTER TABLE transaksi ADD COLUMN catatan TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE transaksi ADD COLUMN diskon INTEGER DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE transaksi ADD COLUMN diskon_info TEXT DEFAULT ''"); } catch(e) {}
+
+// Migrasi: tambah kolom foto di menu (data URL base64, JPG/WebP <150KB)
+try { db.exec("ALTER TABLE menu ADD COLUMN foto TEXT DEFAULT ''"); } catch(e) {}
+
+// Tabel review menu
+db.exec(`
+  CREATE TABLE IF NOT EXISTS review (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    menu_id INTEGER NOT NULL,
+    pelanggan_id INTEGER NOT NULL,
+    pesanan_id INTEGER DEFAULT 0,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    komentar TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+// Index biar agregasi rating cepat
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_review_menu ON review(menu_id)"); } catch(e) {}
+
+// Tabel push subscription untuk app pelanggan (persistent, bukan in-memory)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS push_pelanggan (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pelanggan_id INTEGER DEFAULT 0,
+    endpoint TEXT NOT NULL UNIQUE,
+    subscription TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
 
 // Tabel pesanan online & QR meja (tracking semua pesanan masuk)
 db.exec(`
@@ -549,9 +579,16 @@ app.get("/api/server-info", (req, res) => {
   res.json({ ip: getLocalIP(), port: PORT, publicURL: publicURL || null });
 });
 
-// API: ambil daftar menu
+// API: ambil daftar menu + agregat rating
 app.get("/api/menu", (req, res) => {
-  res.json(getAllMenu.all());
+  const rows = db.prepare(`
+    SELECT m.*,
+      (SELECT ROUND(AVG(rating), 1) FROM review WHERE menu_id = m.id) AS avg_rating,
+      (SELECT COUNT(*) FROM review WHERE menu_id = m.id) AS review_count
+    FROM menu m
+    ORDER BY m.kategori, m.nama
+  `).all();
+  res.json(rows);
 });
 
 // API: ambil opsi kustomisasi menu (ukuran, suhu, topping, addon)
@@ -584,7 +621,7 @@ app.post("/api/menu", (req, res) => {
   if (!role || !HAK_AKSES[role]?.includes("kelola_menu")) {
     return res.status(403).json({ success: false, pesan: "Akses ditolak." });
   }
-  const { nama, harga, kategori, stok } = req.body;
+  const { nama, harga, kategori, stok, foto } = req.body;
   if (!nama || !harga || !kategori) {
     return res
       .status(400)
@@ -595,11 +632,110 @@ app.post("/api/menu", (req, res) => {
   }
   const result = db
     .prepare(
-      "INSERT INTO menu (nama, harga, kategori, stok) VALUES (?, ?, ?, ?)",
+      "INSERT INTO menu (nama, harga, kategori, stok, foto) VALUES (?, ?, ?, ?, ?)",
     )
-    .run(nama, parseInt(harga), kategori, parseInt(stok) || 50);
+    .run(nama, parseInt(harga), kategori, parseInt(stok) || 50, foto || "");
   logAudit(req.headers["x-user"] || role, role, "tambah_menu", `${nama} — Rp ${harga} (${kategori})`);
   res.json({ success: true, id: result.lastInsertRowid });
+});
+
+// API: update foto menu — hanya admin & owner
+app.put("/api/menu/:id/foto", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!role || !HAK_AKSES[role]?.includes("kelola_menu")) {
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  }
+  const { foto } = req.body;
+  const m = db.prepare("SELECT nama FROM menu WHERE id = ?").get(req.params.id);
+  if (!m) return res.status(404).json({ success: false, pesan: "Menu tidak ditemukan." });
+  db.prepare("UPDATE menu SET foto = ? WHERE id = ?").run(foto || "", req.params.id);
+  logAudit(req.headers["x-user"] || role, role, "ubah_foto_menu", m.nama);
+  res.json({ success: true });
+});
+
+// ============================================
+// REVIEW API
+// ============================================
+// GET: daftar review per menu
+app.get("/api/review/menu/:id", (req, res) => {
+  const rows = db.prepare(`
+    SELECT r.id, r.rating, r.komentar, r.created_at, p.nama AS nama_pelanggan
+    FROM review r
+    LEFT JOIN pelanggan p ON p.id = r.pelanggan_id
+    WHERE r.menu_id = ?
+    ORDER BY r.id DESC
+    LIMIT 50
+  `).all(req.params.id);
+  res.json({ success: true, data: rows });
+});
+
+// POST: customer submit review (butuh pelanggan_id & menu_id)
+app.post("/api/review", (req, res) => {
+  const { menu_id, pelanggan_id, pesanan_id, rating, komentar } = req.body;
+  const r = parseInt(rating);
+  if (!menu_id || !pelanggan_id || !r || r < 1 || r > 5) {
+    return res.status(400).json({ success: false, pesan: "Data review tidak valid." });
+  }
+  // Satu pelanggan hanya bisa review 1x per menu per pesanan (kalau pesanan_id=0, boleh unlimited)
+  if (pesanan_id && pesanan_id > 0) {
+    const exists = db.prepare(
+      "SELECT id FROM review WHERE pelanggan_id = ? AND menu_id = ? AND pesanan_id = ?"
+    ).get(pelanggan_id, menu_id, pesanan_id);
+    if (exists) {
+      return res.status(400).json({ success: false, pesan: "Menu ini sudah direview." });
+    }
+  }
+  db.prepare(
+    "INSERT INTO review (menu_id, pelanggan_id, pesanan_id, rating, komentar) VALUES (?, ?, ?, ?, ?)"
+  ).run(menu_id, pelanggan_id, pesanan_id || 0, r, (komentar || "").slice(0, 300));
+  res.json({ success: true });
+});
+
+// ============================================
+// PUSH NOTIFICATION (APP PELANGGAN)
+// ============================================
+// Customer app subscribe notif
+app.post("/api/app-push-subscribe", (req, res) => {
+  const { subscription, pelanggan_id } = req.body;
+  if (!subscription || !subscription.endpoint) return res.status(400).json({ success: false });
+  db.prepare(
+    "INSERT OR REPLACE INTO push_pelanggan (pelanggan_id, endpoint, subscription) VALUES (?, ?, ?)"
+  ).run(pelanggan_id || 0, subscription.endpoint, JSON.stringify(subscription));
+  res.json({ success: true });
+});
+
+// Admin broadcast promo push notification
+app.post("/api/broadcast-promo", async (req, res) => {
+  const role = req.headers["x-role"];
+  if (!role || !["admin", "owner"].includes(role)) {
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  }
+  const { title, body, url } = req.body;
+  if (!title || !body) return res.status(400).json({ success: false, pesan: "Title & body wajib." });
+  const subs = db.prepare("SELECT id, endpoint, subscription FROM push_pelanggan").all();
+  const payload = JSON.stringify({
+    title: title.slice(0, 80),
+    body: body.slice(0, 200),
+    icon: "/icon-192.svg",
+    badge: "/icon-192.svg",
+    tag: "promo-" + Date.now(),
+    url: url || "/app",
+  });
+  let sent = 0, failed = 0;
+  await Promise.all(subs.map(async (s) => {
+    try {
+      await webPush.sendNotification(JSON.parse(s.subscription), payload);
+      sent++;
+    } catch (err) {
+      failed++;
+      // Hapus subscription yg sudah expired (410 Gone)
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        db.prepare("DELETE FROM push_pelanggan WHERE id = ?").run(s.id);
+      }
+    }
+  }));
+  logAudit(req.headers["x-user"] || role, role, "broadcast_promo", `${title} → ${sent} terkirim, ${failed} gagal`);
+  res.json({ success: true, sent, failed, total: subs.length });
 });
 
 // API: hapus menu — hanya admin & owner

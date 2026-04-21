@@ -619,6 +619,31 @@
       </div>
     </div>
 
+    <!-- ==================== RATING MODAL ==================== -->
+    <div class="fixed inset-0 z-[220] items-center justify-center p-4 hidden" id="rating-modal" style="background:rgba(15,23,42,0.5); backdrop-filter:blur(4px);" onclick="closeRatingModal(event)">
+      <div class="w-full max-w-md rounded-3xl p-6" style="background:#ffffff; box-shadow:0 10px 40px rgba(15,23,42,0.15);" onclick="event.stopPropagation()">
+        <div class="text-center mb-5">
+          <div class="text-4xl mb-2" id="rating-emoji">⭐</div>
+          <h3 class="font-800 text-lg" style="color:#0f172a;" id="rating-menu-nama">Menu</h3>
+          <p class="text-xs mt-1" style="color:#64748b;">Gimana rasanya? Kasih rating dong!</p>
+        </div>
+        <!-- Stars -->
+        <div class="flex justify-center gap-2 mb-5" id="rating-stars">
+          <button type="button" data-star="1" onclick="pickStar(1)" class="rating-star text-4xl transition-all" style="color:#cbd5e1;">⭐</button>
+          <button type="button" data-star="2" onclick="pickStar(2)" class="rating-star text-4xl transition-all" style="color:#cbd5e1;">⭐</button>
+          <button type="button" data-star="3" onclick="pickStar(3)" class="rating-star text-4xl transition-all" style="color:#cbd5e1;">⭐</button>
+          <button type="button" data-star="4" onclick="pickStar(4)" class="rating-star text-4xl transition-all" style="color:#cbd5e1;">⭐</button>
+          <button type="button" data-star="5" onclick="pickStar(5)" class="rating-star text-4xl transition-all" style="color:#cbd5e1;">⭐</button>
+        </div>
+        <!-- Komentar -->
+        <textarea id="rating-komentar" maxlength="300" placeholder="Cerita sedikit tentang pengalamanmu... (opsional)" rows="3" class="w-full rounded-xl px-4 py-3 text-sm font-500 outline-none resize-none mb-4" style="background:#f8fafc; border:1px solid #e2e8f0; color:#0f172a;"></textarea>
+        <div class="flex gap-2">
+          <button onclick="closeRatingModal()" class="flex-1 py-3 rounded-xl font-700 text-sm" style="background:#f1f5f9; color:#64748b;">Batal</button>
+          <button id="rating-submit" onclick="submitRating()" class="flex-1 py-3 rounded-xl text-white font-700 text-sm" style="background:linear-gradient(135deg,#ea580c,#dc2626);">Kirim Rating</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Order Ready Popup -->
     <!-- Overlay: Pesanan Sedang Diproses -->
     <div class="fixed inset-0 z-[250] flex items-center justify-center p-6 opacity-0 pointer-events-none" id="order-processing-overlay" style="transition:opacity 0.4s ease; background:rgba(248,250,252,0.95); backdrop-filter:blur(20px);">
@@ -837,9 +862,15 @@
           const vapidRes = await fetch("/api/vapid-public-key");
           const { publicKey } = await vapidRes.json();
           const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+          // Legacy: order-status push via meja channel
           await fetch("/api/push-subscribe", {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ meja: "online", subscription: sub }),
+          });
+          // Baru: broadcast promo via push_pelanggan (persistent)
+          await fetch("/api/app-push-subscribe", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscription: sub, pelanggan_id: loggedInUser?.id || 0 }),
           });
         } catch (e) { console.log("Push setup:", e); }
       }
@@ -885,17 +916,25 @@
           const totalQty = Object.values(cart).filter(c => c.id === item.id).reduce((s,c) => s + c.qty, 0);
           const emoji = EMOJI[item.kategori] || "🍽️";
           const isFav = favoritSet.has(item.id);
+          const hasFoto = !!item.foto;
+          const ratingHtml = item.avg_rating
+            ? `<div class="flex items-center gap-1 mb-1"><span class="text-amber-500 text-[11px]">⭐</span><span class="text-[10px] font-700" style="color:#64748b;">${item.avg_rating}</span><span class="text-[9px]" style="color:#94a3b8;">(${item.review_count})</span></div>`
+            : '';
           return `
-            <div class="menu-card glass-card rounded-2xl p-4 relative fade-up ${out ? 'item-disabled' : ''}" style="animation-delay:${i*0.05}s" ${!out ? `onclick="addToCart(${item.id})"` : ""}>
+            <div class="menu-card glass-card rounded-2xl p-3 relative fade-up ${out ? 'item-disabled' : ''}" style="animation-delay:${i*0.05}s" ${!out ? `onclick="addToCart(${item.id})"` : ""}>
               ${out ? '<div class="habis-badge">Habis</div>' : ''}
               <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorit(event,${item.id})">
                 <svg viewBox="0 0 24 24" fill="${isFav ? 'white' : 'none'}" stroke="${isFav ? 'white' : '#94a3b8'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
               </button>
-              ${totalQty > 0 ? `<div class="absolute top-2 left-2 w-6 h-6 rounded-full bg-orange-600 flex items-center justify-center text-white text-xs font-800">${totalQty}</div>` : ''}
-              <div class="text-3xl mb-2 mt-2">${emoji}</div>
-              <h3 class="font-700 text-sm leading-tight mb-1 line-clamp-2" style="color:#0f172a;">${item.nama}</h3>
-              <p class="text-xs capitalize mb-2" style="color:#94a3b8;">${item.kategori}</p>
-              <div class="flex items-end justify-between">
+              ${totalQty > 0 ? `<div class="absolute top-2 left-2 w-6 h-6 rounded-full bg-orange-600 flex items-center justify-center text-white text-xs font-800 z-[1]">${totalQty}</div>` : ''}
+              <div class="rounded-xl overflow-hidden mb-2 aspect-square flex items-center justify-center" style="background:${hasFoto ? 'transparent' : '#f1f5f9'};">
+                ${hasFoto
+                  ? `<img src="${item.foto}" class="w-full h-full object-cover" alt="${item.nama}" loading="lazy" />`
+                  : `<span class="text-5xl">${emoji}</span>`}
+              </div>
+              <h3 class="font-700 text-sm leading-tight mb-0.5 line-clamp-2" style="color:#0f172a;">${item.nama}</h3>
+              ${ratingHtml}
+              <div class="flex items-end justify-between mt-1">
                 <span class="gradient-text font-800 text-sm">Rp ${item.harga.toLocaleString("id-ID")}</span>
                 ${!out ? '<div class="w-7 h-7 rounded-full flex items-center justify-center" style="background:linear-gradient(135deg,#ea580c,#dc2626);"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg></div>' : ''}
               </div>
@@ -1281,19 +1320,105 @@
           const items = p.items || [];
           const itemsText = items.map(i => `${i.nama} x${i.qty}`).join(", ");
           const tgl = new Date(p.created_at).toLocaleDateString("id-ID", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
+          const canReview = p.status === "selesai";
+          const reviewedKey = `rev_${p.id}`;
+          const reviewedItems = JSON.parse(localStorage.getItem(reviewedKey) || "[]");
+          const ratingSection = canReview && items.length > 0 ? `
+            <div class="mt-3 pt-3" style="border-top:1px dashed #e2e8f0;">
+              <p class="text-[10px] font-700 mb-2" style="color:#64748b;">📝 BERI RATING</p>
+              <div class="flex flex-wrap gap-1.5">
+                ${items.filter(i => i.menuId).map(i => {
+                  const done = reviewedItems.includes(i.menuId);
+                  return `<button onclick="event.stopPropagation(); openRatingModal(${i.menuId}, '${(i.nama||'').replace(/'/g,"\\'")}', ${p.id})" ${done?'disabled':''} class="rounded-full px-3 py-1.5 text-[10px] font-700 transition-all" style="background:${done?'#f1f5f9':'#fff7ed'};color:${done?'#94a3b8':'#c2410c'};border:1px solid ${done?'#e2e8f0':'#fed7aa'};">${done?'✓ '+i.nama:'⭐ '+i.nama}</button>`;
+                }).join("")}
+              </div>
+            </div>` : "";
           return `<div class="glass-card rounded-2xl p-4">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-white/40 text-xs font-600">${p.kode_pesanan}</span>
+              <span class="text-xs font-600" style="color:#64748b;">${p.kode_pesanan}</span>
               <span class="status-${p.status} text-xs font-700 px-2.5 py-1 rounded-full">${statusIcon[p.status]||""} ${statusLabel[p.status]||p.status}</span>
             </div>
-            <p class="text-white font-600 text-sm truncate">${itemsText}</p>
+            <p class="font-600 text-sm truncate" style="color:#0f172a;">${itemsText}</p>
             <div class="flex items-center justify-between mt-2">
-              <span class="text-white/30 text-xs">${tgl}</span>
+              <span class="text-xs" style="color:#94a3b8;">${tgl}</span>
               <span class="gradient-text font-800 text-sm">Rp ${(p.total - (p.diskon||0)).toLocaleString("id-ID")}</span>
             </div>
-            ${p.diskon > 0 ? `<p class="text-green-400/60 text-[10px] mt-1">Diskon: -Rp ${p.diskon.toLocaleString("id-ID")} (${p.promo_kode})</p>` : ""}
+            ${p.diskon > 0 ? `<p class="text-[10px] mt-1" style="color:#059669;">Diskon: -Rp ${p.diskon.toLocaleString("id-ID")} (${p.promo_kode})</p>` : ""}
+            ${ratingSection}
           </div>`;
         }).join("");
+      }
+
+      // ============================
+      // Rating
+      // ============================
+      let ratingState = { menuId: null, menuNama: "", pesananId: 0, stars: 0 };
+      function openRatingModal(menuId, menuNama, pesananId) {
+        if (!loggedInUser) return;
+        ratingState = { menuId, menuNama, pesananId, stars: 0 };
+        document.getElementById("rating-menu-nama").textContent = menuNama;
+        document.getElementById("rating-komentar").value = "";
+        const menu = menuData.find(m => m.id === menuId);
+        document.getElementById("rating-emoji").textContent = menu ? (EMOJI[menu.kategori] || "🍽️") : "⭐";
+        pickStar(0);
+        const m = document.getElementById("rating-modal");
+        m.classList.remove("hidden");
+        m.classList.add("flex");
+      }
+      function closeRatingModal(ev) {
+        if (ev && ev.target.id !== "rating-modal") return;
+        const m = document.getElementById("rating-modal");
+        m.classList.add("hidden");
+        m.classList.remove("flex");
+      }
+      function pickStar(n) {
+        ratingState.stars = n;
+        document.querySelectorAll(".rating-star").forEach(s => {
+          s.style.color = parseInt(s.dataset.star) <= n ? "#f59e0b" : "#cbd5e1";
+          s.style.transform = parseInt(s.dataset.star) === n ? "scale(1.2)" : "scale(1)";
+        });
+      }
+      async function submitRating() {
+        if (ratingState.stars < 1) return alert("Kasih bintang dulu ya!");
+        const btn = document.getElementById("rating-submit");
+        btn.disabled = true; btn.textContent = "Mengirim...";
+        try {
+          const res = await fetch("/api/review", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              menu_id: ratingState.menuId,
+              pelanggan_id: loggedInUser.id,
+              pesanan_id: ratingState.pesananId,
+              rating: ratingState.stars,
+              komentar: document.getElementById("rating-komentar").value.trim(),
+            }),
+          });
+          const data = await res.json();
+          if (!data.success) {
+            alert(data.pesan || "Gagal kirim rating.");
+            btn.disabled = false; btn.textContent = "Kirim Rating";
+            return;
+          }
+          // Catat lokal biar button jadi ✓
+          const key = `rev_${ratingState.pesananId}`;
+          const list = JSON.parse(localStorage.getItem(key) || "[]");
+          if (!list.includes(ratingState.menuId)) list.push(ratingState.menuId);
+          localStorage.setItem(key, JSON.stringify(list));
+          closeRatingModal();
+          renderPesanan();
+          // Reload menu biar rating bintang di card update
+          try {
+            const rmen = await fetch("/api/menu");
+            const rows = await rmen.json();
+            menuData = rows.map(r => ({ ...r }));
+            renderMenu();
+          } catch(e){}
+        } catch (e) {
+          alert("Gagal terhubung ke server.");
+        } finally {
+          btn.disabled = false; btn.textContent = "Kirim Rating";
+        }
       }
 
       // Track semua kode pesanan dari sesi ini
