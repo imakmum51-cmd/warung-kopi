@@ -38,6 +38,11 @@
       .hide-scrollbar::-webkit-scrollbar {
         display: none;
       }
+      /* Visible slim scrollbar buat modal list */
+      .custom-scrollbar::-webkit-scrollbar { width: 7px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #fb923c; border-radius: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ea580c; }
       .receipt-font {
         font-family: "Courier New", Courier, monospace;
       }
@@ -2123,63 +2128,79 @@
           </button>
         </div>
 
-        <div
-          class="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-4 mb-4"
-        >
-          <p
-            class="text-[9px] font-black text-orange-600 uppercase tracking-widest mb-3"
+        <!-- Tambah Menu (Collapsible) -->
+        <div class="mb-4">
+          <button
+            type="button"
+            onclick="toggleTambahMenu()"
+            id="toggle-tambah-menu"
+            class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-orange-500/30 hover:shadow-lg transition-all"
           >
-            &#10133; Tambah Menu Baru
-          </p>
-          <div class="grid grid-cols-2 gap-2 mb-2">
-            <input
-              type="text"
-              id="new-menu-nama"
-              placeholder="Nama menu"
-              class="col-span-2 px-3 py-2 rounded-xl bg-white border-2 border-orange-100 font-semibold text-sm outline-none focus:border-orange-500 transition-all"
-            />
-            <input
-              type="number"
-              id="new-menu-harga"
-              placeholder="Harga (Rp)"
-              class="px-3 py-2 rounded-xl bg-white border-2 border-orange-100 font-semibold text-sm outline-none focus:border-orange-500 transition-all"
-            />
-            <select
-              id="new-menu-kategori"
-              class="px-3 py-2 rounded-xl bg-white border-2 border-orange-100 font-semibold text-sm outline-none focus:border-orange-500 transition-all text-slate-600"
-            >
-              <option value="">Kategori...</option>
-              <option value="makanan">&#127835; Makanan</option>
-              <option value="minuman">&#129380; Minuman</option>
-              <option value="kopi">&#9749; Kopi</option>
-              <option value="snack">&#127871; Snack</option>
-            </select>
-            <input
-              type="number"
-              id="new-menu-stok"
-              placeholder="Stok awal"
-              value="50"
-              class="px-3 py-2 rounded-xl bg-white border-2 border-orange-100 font-semibold text-sm outline-none focus:border-orange-500 transition-all"
-            />
+            <span>➕ Tambah Menu Baru</span>
+            <span id="tambah-menu-caret" class="transition-transform">▼</span>
+          </button>
+          <div
+            id="tambah-menu-form"
+            class="hidden bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-4 mt-2"
+          >
+            <div class="grid grid-cols-2 gap-2 mb-2">
+              <input
+                type="text"
+                id="new-menu-nama"
+                placeholder="Nama menu"
+                class="col-span-2 px-3 py-2.5 rounded-xl bg-white border-2 border-orange-100 font-semibold text-sm outline-none focus:border-orange-500 transition-all"
+              />
+              <input
+                type="number"
+                id="new-menu-harga"
+                placeholder="Harga (Rp)"
+                class="px-3 py-2.5 rounded-xl bg-white border-2 border-orange-100 font-semibold text-sm outline-none focus:border-orange-500 transition-all"
+              />
+              <select
+                id="new-menu-kategori"
+                class="px-3 py-2.5 rounded-xl bg-white border-2 border-orange-100 font-semibold text-sm outline-none focus:border-orange-500 transition-all text-slate-600"
+              >
+                <option value="">Kategori...</option>
+                <option value="makanan">&#127835; Makanan</option>
+                <option value="minuman">&#129380; Minuman</option>
+                <option value="kopi">&#9749; Kopi</option>
+                <option value="snack">&#127871; Snack</option>
+              </select>
+              <input
+                type="number"
+                id="new-menu-stok"
+                placeholder="Stok awal"
+                value="50"
+                class="px-3 py-2.5 rounded-xl bg-white border-2 border-orange-100 font-semibold text-sm outline-none focus:border-orange-500 transition-all"
+              />
+              <div class="flex items-center gap-2 col-span-1">
+                <div id="new-menu-foto-preview" class="w-11 h-11 rounded-xl bg-white border-2 border-orange-100 flex items-center justify-center text-xl flex-shrink-0">📷</div>
+                <label class="flex-1 cursor-pointer">
+                  <input type="file" accept="image/*" id="new-menu-foto" onchange="handleNewMenuFoto(event)" class="hidden" />
+                  <span class="block px-2 py-2.5 rounded-xl bg-white border-2 border-orange-100 font-semibold text-[11px] text-orange-600 text-center hover:border-orange-400 transition-all">📸 Foto</span>
+                </label>
+              </div>
+            </div>
             <button
               onclick="tambahMenuBaru()"
-              class="btn-urban text-white py-2 rounded-xl font-black text-[10px] uppercase tracking-widest"
+              class="w-full btn-urban text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest"
             >
-              + TAMBAH
+              ✓ SIMPAN MENU BARU
             </button>
           </div>
-          <div class="flex items-center gap-3 mt-2">
-            <div id="new-menu-foto-preview" class="w-14 h-14 rounded-xl bg-white border-2 border-orange-100 flex items-center justify-center text-2xl flex-shrink-0">📷</div>
-            <label class="flex-1 cursor-pointer">
-              <input type="file" accept="image/*" id="new-menu-foto" onchange="handleNewMenuFoto(event)" class="hidden" />
-              <span class="block px-3 py-2 rounded-xl bg-white border-2 border-orange-100 font-semibold text-xs text-orange-600 text-center hover:border-orange-400 transition-all">📸 Pilih Foto Menu (opsional)</span>
-            </label>
-          </div>
+        </div>
+
+        <!-- Info list + Search -->
+        <div class="flex items-center justify-between mb-2 px-1">
+          <p class="text-[11px] font-black text-slate-600 uppercase tracking-wider">
+            📋 Daftar Menu (<span id="stok-count">0</span>)
+          </p>
+          <p class="text-[10px] font-bold text-slate-400">Scroll ↓</p>
         </div>
 
         <div
           id="stok-list"
-          class="flex-1 overflow-y-auto space-y-2 hide-scrollbar"
+          class="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar"
         ></div>
         <div class="mt-5 pt-4 border-t border-slate-100">
           <button
@@ -6319,44 +6340,70 @@
         modal.classList.remove("hidden");
         modal.classList.add("flex");
         renderStokList();
+        // Collapse form tambah by default
+        document.getElementById("tambah-menu-form").classList.add("hidden");
+        document.getElementById("tambah-menu-caret").textContent = "▼";
       }
       function closeStokModal() {
         const modal = document.getElementById("stok-modal");
         modal.classList.add("hidden");
         modal.classList.remove("flex");
       }
+      function toggleTambahMenu() {
+        const form = document.getElementById("tambah-menu-form");
+        const caret = document.getElementById("tambah-menu-caret");
+        const isOpen = !form.classList.contains("hidden");
+        form.classList.toggle("hidden");
+        caret.textContent = isOpen ? "▼" : "▲";
+      }
 
       function renderStokList() {
         const list = document.getElementById("stok-list");
+        const countEl = document.getElementById("stok-count");
+        if (countEl) countEl.textContent = menuData.length;
         list.innerHTML = menuData
           .map((item) => {
             const emoji = categoryEmoji[item.category] || "&#127860;";
             const thumb = item.foto
-              ? `<img src="${item.foto}" class="w-11 h-11 rounded-lg object-cover flex-shrink-0" alt="" />`
-              : `<span class="text-xl w-11 h-11 flex items-center justify-center flex-shrink-0">${emoji}</span>`;
+              ? `<img src="${item.foto}" class="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-200" alt="" />`
+              : `<div class="w-16 h-16 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 flex items-center justify-center text-3xl flex-shrink-0">${emoji}</div>`;
             return `
-          <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100 hover:border-orange-200 transition-all">
-            <div class="flex items-center space-x-3 flex-1 min-w-0 mr-3">
+          <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 hover:border-orange-200 transition-all">
+            <!-- TOP ROW: thumb + name/price + delete-menu -->
+            <div class="flex items-start gap-3 mb-3">
               ${thumb}
-              <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-[10px] text-slate-800 uppercase truncate">${item.name}</p>
-                <p class="text-[8px] font-bold text-slate-400">Rp ${item.price.toLocaleString("id-ID")}</p>
-                <div class="flex gap-1 mt-1">
-                  <button onclick="uploadFotoMenu(${item.id})" class="text-[8px] font-black text-blue-600 hover:underline">${item.foto ? '🔄 Ganti Foto' : '📸 Upload Foto'}</button>
-                  ${item.foto ? `<button onclick="hapusFotoMenu(${item.id})" class="text-[8px] font-black text-red-500 hover:underline">🗑️ Hapus</button>` : ''}
-                </div>
+              <div class="min-w-0 flex-1 pt-0.5">
+                <p class="font-black text-sm text-slate-800 leading-tight mb-0.5 break-words">${item.name}</p>
+                <p class="text-xs font-bold text-orange-600 mb-1.5">Rp ${item.price.toLocaleString("id-ID")}</p>
+                <span class="inline-block text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full capitalize border border-slate-200">${item.category || '-'}</span>
               </div>
-            </div>
-            <div class="flex items-center space-x-1.5">
-              <button onclick="ubahStokInput(${item.id}, -1)" class="bg-red-100 hover:bg-red-200 text-red-600 w-7 h-7 rounded-lg font-black text-xs transition-all">-</button>
-              <input type="number" id="stok-input-${item.id}" value="${item.stock}" min="0"
-                class="w-14 text-center font-black text-sm bg-white border-2 border-slate-200 rounded-xl py-1 focus:border-orange-500 outline-none" />
-              <button onclick="ubahStokInput(${item.id}, 1)" class="bg-green-100 hover:bg-green-200 text-green-600 w-7 h-7 rounded-lg font-black text-xs transition-all">+</button>
-              <button onclick="simpanStokSatu(${item.id})" class="bg-blue-100 hover:bg-blue-600 text-blue-600 hover:text-white px-2 h-7 rounded-lg font-black text-[8px] transition-all uppercase" title="Simpan">OK</button>
-              <button onclick="hapusMenu(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="bg-red-50 hover:bg-red-500 text-red-400 hover:text-white w-7 h-7 rounded-lg flex items-center justify-center transition-all" title="Hapus">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <button onclick="hapusMenu(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="bg-red-50 hover:bg-red-500 text-red-500 hover:text-white w-9 h-9 rounded-lg flex items-center justify-center transition-all flex-shrink-0" title="Hapus menu">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
+              </button>
+            </div>
+
+            <!-- FOTO ACTIONS -->
+            <div class="flex gap-2 mb-3">
+              <button onclick="uploadFotoMenu(${item.id})" class="flex-1 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs transition-all border border-blue-100 flex items-center justify-center gap-1.5">
+                ${item.foto ? '🔄 Ganti Foto' : '📸 Upload Foto'}
+              </button>
+              ${item.foto ? `
+                <button onclick="hapusFotoMenu(${item.id})" class="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition-all border border-red-100">
+                  🗑️ Foto
+                </button>` : ''}
+            </div>
+
+            <!-- STOK CONTROLS -->
+            <div class="flex items-center gap-2 pt-3 border-t border-slate-200">
+              <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider flex-shrink-0">Stok:</span>
+              <button onclick="ubahStokInput(${item.id}, -1)" class="bg-red-100 hover:bg-red-200 text-red-600 w-9 h-9 rounded-lg font-black text-base transition-all flex-shrink-0">−</button>
+              <input type="number" id="stok-input-${item.id}" value="${item.stock}" min="0"
+                class="w-16 text-center font-black text-sm bg-white border-2 border-slate-200 rounded-xl py-1.5 focus:border-orange-500 outline-none" />
+              <button onclick="ubahStokInput(${item.id}, 1)" class="bg-green-100 hover:bg-green-200 text-green-600 w-9 h-9 rounded-lg font-black text-base transition-all flex-shrink-0">+</button>
+              <button onclick="simpanStokSatu(${item.id})" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-9 rounded-lg font-black text-xs transition-all uppercase tracking-wider">
+                Simpan
               </button>
             </div>
           </div>`;
