@@ -54,6 +54,7 @@ const HAK_AKSES = {
     "kelola_menu",
     "kelola_stok",
     "void",
+    "audit_log",
   ],
   kasir: ["transaksi", "laporan_harian", "void"],
   pembeli: [], // hanya layar tampilan, tidak ada akses socket aktif
@@ -1774,6 +1775,19 @@ app.get("/api/audit-log", (req, res) => {
   const logs = db.prepare("SELECT * FROM audit_log ORDER BY id DESC LIMIT ? OFFSET ?").all(limit, offset);
   const total = db.prepare("SELECT COUNT(*) as c FROM audit_log").get().c;
   res.json({ success: true, data: logs, total });
+});
+
+// Reset audit log — hanya admin. Sisakan 1 baris self-audit supaya jejak reset tetap ada.
+app.delete("/api/audit-log", (req, res) => {
+  const role = req.headers["x-role"];
+  if (!HAK_AKSES[role]?.includes("audit_log"))
+    return res.status(403).json({ success: false, pesan: "Akses ditolak." });
+  const user = req.headers["x-user"] || role;
+  const totalDihapus = db.prepare("SELECT COUNT(*) as c FROM audit_log").get().c;
+  db.prepare("DELETE FROM audit_log").run();
+  try { db.prepare("DELETE FROM sqlite_sequence WHERE name = 'audit_log'").run(); } catch (e) {}
+  logAudit(user, role, "reset_audit_log", `${totalDihapus} baris riwayat dihapus`);
+  res.json({ success: true, dihapus: totalDihapus });
 });
 
 // VAPID public key untuk client

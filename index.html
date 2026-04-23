@@ -2456,11 +2456,18 @@
         <!-- Tab Navigation -->
         <div class="keu-tabs-wrap flex flex-wrap gap-1.5 mb-5 border-b border-slate-100 pb-3">
           <button
-            onclick="switchKeuanganTab('ringkasan')"
-            id="tab-ringkasan"
+            onclick="switchKeuanganTab('dashboard')"
+            id="tab-dashboard"
             class="keu-tab text-[10px] font-black uppercase tracking-wider px-4 py-2.5 rounded-xl bg-orange-600 text-white transition-all active:scale-95"
           >
-            &#128200; Ringkasan
+            &#128200; Dashboard
+          </button>
+          <button
+            onclick="switchKeuanganTab('ringkasan')"
+            id="tab-ringkasan"
+            class="keu-tab text-[10px] font-black uppercase tracking-wider px-4 py-2.5 rounded-xl bg-slate-100 text-slate-400 transition-all active:scale-95"
+          >
+            &#128203; Ringkasan
           </button>
           <button
             onclick="switchKeuanganTab('harian')"
@@ -2514,8 +2521,70 @@
         </div>
 
         <div class="flex-1 overflow-y-auto hide-scrollbar">
+          <!-- TAB: Dashboard Analitik Visual -->
+          <div id="panel-dashboard">
+            <!-- Period selector -->
+            <div class="flex items-center gap-2 mb-4 flex-wrap">
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Periode:</span>
+              <div class="inline-flex bg-slate-100 rounded-xl p-1 gap-1">
+                <button onclick="setDashPeriod('today')" id="dash-p-today"
+                  class="dash-pbtn text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg bg-white shadow text-orange-600 transition-all">Hari Ini</button>
+                <button onclick="setDashPeriod('7d')" id="dash-p-7d"
+                  class="dash-pbtn text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg text-slate-400 transition-all">7 Hari</button>
+                <button onclick="setDashPeriod('30d')" id="dash-p-30d"
+                  class="dash-pbtn text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg text-slate-400 transition-all">30 Hari</button>
+              </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div id="dash-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
+
+            <!-- Main trend chart -->
+            <div class="bg-slate-50 rounded-2xl p-5 mb-4 border border-slate-100">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">&#128200; Tren Omzet</p>
+                  <p id="dash-trend-sub" class="text-[9px] text-slate-400 font-bold mt-0.5">—</p>
+                </div>
+                <span id="dash-trend-label" class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">—</span>
+              </div>
+              <div style="height:220px"><canvas id="chart-dash-trend"></canvas></div>
+            </div>
+
+            <!-- Jam sibuk + Kategori -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">&#128337; Jam Tersibuk</p>
+                <p id="dash-jam-sub" class="text-[9px] text-slate-400 font-bold mb-3">—</p>
+                <div style="height:180px"><canvas id="chart-dash-jam"></canvas></div>
+              </div>
+              <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">&#127869; Kategori Terlaris</p>
+                <p id="dash-kat-sub" class="text-[9px] text-slate-400 font-bold mb-3">—</p>
+                <div style="height:180px;display:flex;justify-content:center"><canvas id="chart-dash-kategori"></canvas></div>
+              </div>
+            </div>
+
+            <!-- Kasir leaderboard -->
+            <div class="bg-slate-50 rounded-2xl p-5 mb-4 border border-slate-100">
+              <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">&#127942; Leaderboard Kasir</p>
+              <div id="dash-kasir" class="space-y-2"></div>
+            </div>
+
+            <!-- Insights -->
+            <div class="bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 rounded-2xl p-5 text-white shadow-lg">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <span class="text-base">&#128161;</span>
+                </div>
+                <p class="text-[10px] font-black uppercase tracking-widest">Insight Otomatis</p>
+              </div>
+              <div id="dash-insights" class="space-y-2"></div>
+            </div>
+          </div>
+
           <!-- TAB: Ringkasan -->
-          <div id="panel-ringkasan">
+          <div id="panel-ringkasan" class="hidden">
             <div
               id="keuangan-summary"
               class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"
@@ -2871,9 +2940,14 @@
               <p class="text-[10px] text-slate-400 font-bold tracking-widest">ADMIN ONLY — RIWAYAT AKSI</p>
             </div>
           </div>
-          <button onclick="closeAuditLog()" class="bg-slate-100 hover:bg-red-50 hover:text-red-500 p-3 rounded-xl transition-all text-slate-400 active:scale-90">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="resetAuditLog()" id="audit-reset-btn" class="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-3 py-2 rounded-xl font-bold text-[9px] uppercase tracking-wider transition-all border border-red-200 hover:border-red-500 active:scale-95">
+              &#128465; Reset
+            </button>
+            <button onclick="closeAuditLog()" class="bg-slate-100 hover:bg-red-50 hover:text-red-500 p-3 rounded-xl transition-all text-slate-400 active:scale-90">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
         </div>
         <div id="audit-log-content" class="flex-1 overflow-y-auto hide-scrollbar"></div>
       </div>
@@ -4251,6 +4325,7 @@
       const TARGET_HARIAN = parseInt(window._settingToko?.target_harian || '500000');
 
       const ALL_TABS = [
+        "dashboard",
         "ringkasan",
         "harian",
         "bulanan",
@@ -4302,6 +4377,7 @@
 
       function renderKeuangan() {
         const data = historyTransaksi;
+        renderDashboard(data);
         renderRingkasan(data);
         renderHarian(data);
         renderBulanan(data);
@@ -4310,6 +4386,289 @@
         renderKinerja(data);
         renderRiwayat(data);
         renderRisetPenghasilan(data);
+      }
+
+      // ===== DASHBOARD ANALITIK VISUAL =====
+      let _dashPeriod = 'today';
+      let _dashLastData = [];
+
+      function setDashPeriod(p) {
+        _dashPeriod = p;
+        ['today','7d','30d'].forEach(k => {
+          const btn = document.getElementById('dash-p-' + k);
+          if (!btn) return;
+          btn.className = (k === p)
+            ? 'dash-pbtn text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg bg-white shadow text-orange-600 transition-all'
+            : 'dash-pbtn text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg text-slate-400 transition-all';
+        });
+        renderDashboard(_dashLastData);
+      }
+
+      function _dashPeriodRange(period) {
+        const now = new Date();
+        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        const start = new Date(end);
+        if (period === 'today') start.setHours(0,0,0,0);
+        else if (period === '7d') { start.setDate(start.getDate() - 6); start.setHours(0,0,0,0); }
+        else { start.setDate(start.getDate() - 29); start.setHours(0,0,0,0); }
+        const prevEnd = new Date(start.getTime() - 1000);
+        const prevStart = new Date(prevEnd);
+        const days = (period === 'today') ? 1 : (period === '7d' ? 7 : 30);
+        prevStart.setDate(prevStart.getDate() - (days - 1));
+        prevStart.setHours(0,0,0,0);
+        return { start, end, prevStart, prevEnd, days };
+      }
+
+      function _fmtRp(n) {
+        n = Math.round(n || 0);
+        if (n >= 1_000_000) return 'Rp ' + (n/1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + 'jt';
+        if (n >= 1_000) return 'Rp ' + (n/1_000).toFixed(0) + 'rb';
+        return 'Rp ' + n.toLocaleString('id-ID');
+      }
+
+      function _pctChange(curr, prev) {
+        if (!prev) return curr > 0 ? 100 : 0;
+        return Math.round(((curr - prev) / prev) * 100);
+      }
+
+      function renderDashboard(data) {
+        _dashLastData = data || [];
+        const { start, end, prevStart, prevEnd, days } = _dashPeriodRange(_dashPeriod);
+
+        const inRange = (t, a, b) => {
+          const d = parseTanggal(t.Tanggal);
+          return d >= a && d <= b;
+        };
+        const curr = _dashLastData.filter(t => inRange(t, start, end));
+        const prev = _dashLastData.filter(t => inRange(t, prevStart, prevEnd));
+
+        const omzet = curr.reduce((s, t) => s + (t.Total||0), 0);
+        const omzetPrev = prev.reduce((s, t) => s + (t.Total||0), 0);
+        const trxCount = curr.length;
+        const trxPrev = prev.length;
+        const avgTicket = trxCount ? omzet / trxCount : 0;
+        const avgPrev = trxPrev ? omzetPrev / trxPrev : 0;
+
+        // Profit: omzet - pengeluaran (best-effort: pakai window._pengeluaranData jika ada)
+        const pengeluaranData = window._pengeluaranData || [];
+        const pengeluaran = pengeluaranData
+          .filter(p => {
+            const d = new Date(p.tanggal + 'T00:00:00');
+            return d >= start && d <= end;
+          })
+          .reduce((s, p) => s + (p.nominal||0), 0);
+        const profit = omzet - pengeluaran;
+        const margin = omzet > 0 ? Math.round((profit / omzet) * 100) : 0;
+
+        // KPI cards
+        const pctOmzet = _pctChange(omzet, omzetPrev);
+        const pctTrx = _pctChange(trxCount, trxPrev);
+        const pctAvg = _pctChange(avgTicket, avgPrev);
+        const arrow = (p) => p > 0 ? '&#9650;' : (p < 0 ? '&#9660;' : '&#8226;');
+        const clr = (p) => p > 0 ? 'text-emerald-600 bg-emerald-50' : (p < 0 ? 'text-rose-600 bg-rose-50' : 'text-slate-500 bg-slate-100');
+
+        const kpiHTML = `
+          <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+            <div class="flex items-center justify-between mb-2">
+              <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center"><span class="text-base">&#128176;</span></div>
+              <span class="text-[9px] font-black bg-white/20 px-2 py-0.5 rounded-full">${arrow(pctOmzet)} ${Math.abs(pctOmzet)}%</span>
+            </div>
+            <p class="text-[9px] font-bold text-white/70 uppercase tracking-widest mb-1">Omzet</p>
+            <p class="text-xl font-black">${_fmtRp(omzet)}</p>
+            <p class="text-[9px] text-white/50 font-bold mt-1">vs ${_fmtRp(omzetPrev)} (sebelumnya)</p>
+          </div>
+          <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+            <div class="flex items-center justify-between mb-2">
+              <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center"><span class="text-base">&#128202;</span></div>
+              <span class="text-[9px] font-black bg-white/20 px-2 py-0.5 rounded-full">${margin}% margin</span>
+            </div>
+            <p class="text-[9px] font-bold text-white/70 uppercase tracking-widest mb-1">Profit Bersih</p>
+            <p class="text-xl font-black">${_fmtRp(profit)}</p>
+            <p class="text-[9px] text-white/50 font-bold mt-1">Biaya: ${_fmtRp(pengeluaran)}</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+              <div class="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center"><span class="text-base">&#129534;</span></div>
+              <span class="text-[9px] font-black ${clr(pctTrx)} px-2 py-0.5 rounded-full">${arrow(pctTrx)} ${Math.abs(pctTrx)}%</span>
+            </div>
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Transaksi</p>
+            <p class="text-xl font-black text-slate-800">${trxCount}</p>
+            <p class="text-[9px] text-slate-400 font-bold mt-1">vs ${trxPrev} (sebelumnya)</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+              <div class="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center"><span class="text-base">&#127873;</span></div>
+              <span class="text-[9px] font-black ${clr(pctAvg)} px-2 py-0.5 rounded-full">${arrow(pctAvg)} ${Math.abs(pctAvg)}%</span>
+            </div>
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Rata-rata/Trx</p>
+            <p class="text-xl font-black text-slate-800">${_fmtRp(avgTicket)}</p>
+            <p class="text-[9px] text-slate-400 font-bold mt-1">vs ${_fmtRp(avgPrev)} sebelumnya</p>
+          </div>`;
+        document.getElementById('dash-kpi').innerHTML = kpiHTML;
+
+        // Tren Omzet chart
+        const byDay = new Map();
+        for (let i = 0; i < days; i++) {
+          const d = new Date(start);
+          d.setDate(d.getDate() + i);
+          const key = formatTglKey(d);
+          byDay.set(key, { label: d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }), total: 0 });
+        }
+        curr.forEach(t => {
+          const k = formatTglKey(parseTanggal(t.Tanggal));
+          if (byDay.has(k)) byDay.get(k).total += (t.Total || 0);
+        });
+        const trendLabels = Array.from(byDay.values()).map(v => v.label);
+        const trendData = Array.from(byDay.values()).map(v => v.total);
+        const target = parseInt(window._settingToko?.target_harian || TARGET_HARIAN || 0);
+        const targetLine = Array(trendData.length).fill(target);
+
+        const trendSub = document.getElementById('dash-trend-sub');
+        if (trendSub) trendSub.textContent = _dashPeriod === 'today' ? 'Per jam hari ini' : `${days} hari terakhir`;
+        const trendLabel = document.getElementById('dash-trend-label');
+        if (trendLabel) {
+          const avgDaily = trendData.length ? Math.round(trendData.reduce((a,b)=>a+b,0)/trendData.length) : 0;
+          trendLabel.textContent = 'Avg/hari ' + _fmtRp(avgDaily);
+        }
+
+        if (_dashPeriod === 'today') {
+          // Per-jam hari ini
+          const byHour = Array(24).fill(0);
+          curr.forEach(t => { const h = parseTanggal(t.Tanggal).getHours(); byHour[h] += (t.Total||0); });
+          createOrUpdateChart('chart-dash-trend', {
+            type: 'bar',
+            data: {
+              labels: byHour.map((_,i) => String(i).padStart(2,'0') + ':00'),
+              datasets: [{ label: 'Omzet', data: byHour, backgroundColor: '#f97316', borderRadius: 6 }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => _fmtRp(c.parsed.y) } } },
+              scales: { y: { ticks: { callback: v => _fmtRp(v), font: { size: 9 } } }, x: { ticks: { font: { size: 8 } } } }
+            }
+          });
+        } else {
+          createOrUpdateChart('chart-dash-trend', {
+            type: 'bar',
+            data: {
+              labels: trendLabels,
+              datasets: [
+                { type: 'line', label: 'Target', data: targetLine, borderColor: '#ef4444', borderDash: [5,5], borderWidth: 2, pointRadius: 0, fill: false, tension: 0 },
+                { label: 'Omzet', data: trendData, backgroundColor: trendData.map(v => v >= target ? '#10b981' : '#f97316'), borderRadius: 6 }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: true, labels: { font: { size: 9 }, boxWidth: 10 } }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + _fmtRp(c.parsed.y) } } },
+              scales: { y: { ticks: { callback: v => _fmtRp(v), font: { size: 9 } } }, x: { ticks: { font: { size: 8 }, maxRotation: 45, minRotation: 0 } } }
+            }
+          });
+        }
+
+        // Jam sibuk (selalu agregat berdasarkan periode)
+        const jam = Array(24).fill(0);
+        curr.forEach(t => { jam[parseTanggal(t.Tanggal).getHours()] += 1; });
+        const maxJamIdx = jam.indexOf(Math.max(...jam));
+        const jamSub = document.getElementById('dash-jam-sub');
+        if (jamSub) jamSub.textContent = Math.max(...jam) > 0 ? `Puncak: ${String(maxJamIdx).padStart(2,'0')}:00` : 'Belum ada data';
+        createOrUpdateChart('chart-dash-jam', {
+          type: 'bar',
+          data: {
+            labels: jam.map((_,i) => String(i).padStart(2,'0')),
+            datasets: [{ data: jam, backgroundColor: jam.map((v,i) => i === maxJamIdx && v > 0 ? '#f97316' : '#fdba74'), borderRadius: 4 }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y + ' transaksi' } } },
+            scales: { y: { ticks: { font: { size: 9 }, precision: 0 } }, x: { ticks: { font: { size: 8 }, autoSkip: true, maxTicksLimit: 12 } } }
+          }
+        });
+
+        // Kategori donut — cross-reference menuData
+        const menuCat = {};
+        (window.menuData || []).forEach(m => { menuCat[m.name] = m.category || 'Lainnya'; });
+        const byCat = {};
+        curr.forEach(t => {
+          const menuName = (t.Menu || '').split('×')[0].split('(')[0].trim();
+          const cat = menuCat[menuName] || menuCat[t.Menu] || 'Lainnya';
+          byCat[cat] = (byCat[cat] || 0) + (t.Total || 0);
+        });
+        const catEntries = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+        const catSub = document.getElementById('dash-kat-sub');
+        if (catSub) catSub.textContent = catEntries.length ? `Top: ${catEntries[0][0]}` : 'Belum ada data';
+        const catColors = ['#f97316','#10b981','#6366f1','#ec4899','#eab308','#06b6d4','#8b5cf6'];
+        createOrUpdateChart('chart-dash-kategori', {
+          type: 'doughnut',
+          data: {
+            labels: catEntries.map(e => e[0]),
+            datasets: [{ data: catEntries.map(e => e[1]), backgroundColor: catColors, borderWidth: 2, borderColor: '#fff' }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 9 }, boxWidth: 10, padding: 8 } }, tooltip: { callbacks: { label: c => c.label + ': ' + _fmtRp(c.parsed) } } }
+          }
+        });
+
+        // Leaderboard kasir
+        const byKasir = {};
+        curr.forEach(t => {
+          const k = t.Kasir || 'Unknown';
+          if (!byKasir[k]) byKasir[k] = { omzet: 0, trx: 0 };
+          byKasir[k].omzet += (t.Total || 0);
+          byKasir[k].trx += 1;
+        });
+        const kasirArr = Object.entries(byKasir).sort((a,b) => b[1].omzet - a[1].omzet);
+        const maxKasir = kasirArr.length ? kasirArr[0][1].omzet : 1;
+        const medalClr = ['from-amber-400 to-orange-500','from-slate-300 to-slate-400','from-amber-600 to-amber-700'];
+        const medalIcon = ['&#129351;','&#129352;','&#129353;'];
+        const kasirHTML = kasirArr.length === 0
+          ? '<p class="text-[10px] text-slate-400 text-center py-4">Belum ada transaksi di periode ini.</p>'
+          : kasirArr.map((k, i) => `
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl ${i < 3 ? 'bg-gradient-to-br ' + medalClr[i] + ' text-white' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-sm font-black shadow-sm flex-shrink-0">
+                ${i < 3 ? medalIcon[i] : (i+1)}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                  <p class="text-[11px] font-black text-slate-700 truncate">${k[0]}</p>
+                  <p class="text-[10px] font-black text-slate-800 ml-2">${_fmtRp(k[1].omzet)}</p>
+                </div>
+                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full" style="width:${Math.max(2, (k[1].omzet / maxKasir) * 100)}%"></div>
+                </div>
+                <p class="text-[9px] text-slate-400 font-bold mt-0.5">${k[1].trx} transaksi &bull; ${_fmtRp(k[1].trx ? k[1].omzet / k[1].trx : 0)}/trx</p>
+              </div>
+            </div>`).join('');
+        document.getElementById('dash-kasir').innerHTML = kasirHTML;
+
+        // Insight Otomatis
+        const insights = [];
+        const menuByQty = {};
+        curr.forEach(t => {
+          const n = (t.Menu || '').split('×')[0].split('(')[0].trim();
+          if (!n) return;
+          menuByQty[n] = (menuByQty[n] || 0) + (t.Qty || 1);
+        });
+        const topMenu = Object.entries(menuByQty).sort((a,b) => b[1]-a[1])[0];
+        if (topMenu) insights.push(`&#127869; Menu terlaris: <b>${topMenu[0]}</b> (${topMenu[1]} porsi)`);
+        if (kasirArr.length > 0) insights.push(`&#127942; Kasir terbaik: <b>${kasirArr[0][0]}</b> &mdash; ${_fmtRp(kasirArr[0][1].omzet)}`);
+        if (Math.max(...jam) > 0) insights.push(`&#128337; Jam paling ramai: <b>${String(maxJamIdx).padStart(2,'0')}:00&ndash;${String((maxJamIdx+1)%24).padStart(2,'0')}:00</b> (${jam[maxJamIdx]} trx)`);
+        if (pctOmzet !== 0) {
+          const trend = pctOmzet > 0 ? 'naik' : 'turun';
+          insights.push(`&#128200; Omzet <b>${trend} ${Math.abs(pctOmzet)}%</b> dibanding periode sebelumnya`);
+        }
+        if (target > 0 && _dashPeriod !== 'today') {
+          const tercapai = trendData.filter(v => v >= target).length;
+          insights.push(`&#127919; Target tercapai di <b>${tercapai} dari ${days} hari</b> (target: ${_fmtRp(target)}/hari)`);
+        }
+        if (catEntries.length > 1) {
+          const topShare = Math.round((catEntries[0][1] / omzet) * 100);
+          insights.push(`&#127869; Kategori <b>${catEntries[0][0]}</b> menyumbang <b>${topShare}%</b> omzet`);
+        }
+        if (insights.length === 0) insights.push('Belum cukup data untuk menghasilkan insight. Mulai transaksi untuk melihat analisis.');
+        document.getElementById('dash-insights').innerHTML = insights
+          .map(t => `<div class="flex items-start gap-2 text-[11px] leading-relaxed"><span class="text-white/60 mt-0.5">&#9654;</span><span>${t}</span></div>`)
+          .join('');
       }
 
       function renderRingkasan(data) {
@@ -6981,6 +7340,33 @@
         modal.classList.add("hidden");
         modal.classList.remove("flex");
       }
+      async function resetAuditLog() {
+        const hak = window._hakAkses || [];
+        if (!hak.includes("audit_log")) return alert("AKSES DITOLAK.");
+        if (!confirm("Hapus SEMUA riwayat audit log?\n\nData yang dihapus tidak bisa dikembalikan.")) return;
+        const ketik = prompt('Ketik "RESET" untuk konfirmasi:');
+        if ((ketik || "").trim().toUpperCase() !== "RESET") return;
+        const btn = document.getElementById("audit-reset-btn");
+        if (btn) { btn.disabled = true; btn.innerHTML = "Menghapus..."; }
+        try {
+          const res = await fetch("/api/audit-log", {
+            method: "DELETE",
+            headers: { "x-role": window._roleAsli, "x-user": (typeof currentUser !== "undefined" ? currentUser : "") },
+          });
+          const data = await res.json();
+          if (!data.success) {
+            alert(data.pesan || "Gagal reset audit log.");
+          } else {
+            if (typeof showToast === "function") showToast(`AUDIT LOG DIRESET — ${data.dihapus} baris dihapus`);
+            await openAuditLog();
+            return;
+          }
+        } catch (e) {
+          alert("Gagal terhubung ke server.");
+        } finally {
+          if (btn) { btn.disabled = false; btn.innerHTML = "&#128465; Reset"; }
+        }
+      }
       function renderAuditLog(logs) {
         const container = document.getElementById("audit-log-content");
         if (!logs || logs.length === 0) {
@@ -6990,6 +7376,7 @@
         const aksiColors = {
           void: "bg-red-100 text-red-600",
           reset_omzet: "bg-red-100 text-red-700",
+          reset_audit_log: "bg-red-200 text-red-800",
           ubah_setting: "bg-blue-100 text-blue-600",
           tambah_menu: "bg-green-100 text-green-600",
           hapus_menu: "bg-red-100 text-red-600",
