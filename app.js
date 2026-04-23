@@ -348,11 +348,28 @@ db.exec(`
 
 // Seed setting defaults
 const settingDefaults = {
+  // Identitas
   nama_toko: "Cafe Soluna",
   alamat: "Jl. Contoh No. 1",
   telp: "08123456789",
   footer_struk: "Terima kasih telah berkunjung!",
   target_harian: "500000",
+  // Quick Win — Identitas tambahan
+  logo_url: "/public/soluna.png",
+  instagram: "",
+  email_toko: "",
+  // Quick Win — Operasional
+  jam_buka: "07:00",
+  jam_tutup: "23:00",
+  // Quick Win — Pajak & biaya
+  pajak_aktif: "0",
+  pajak_persen: "11",
+  service_charge: "0",
+  // Quick Win — Pembayaran
+  qris_statis_url: "/public/qris.png.png",
+  // Quick Win — Security & operasi
+  auto_logout_menit: "30",
+  notif_stok_habis: "5",
 };
 const seedSetting = db.prepare("INSERT OR IGNORE INTO setting_toko (key, value) VALUES (?, ?)");
 Object.entries(settingDefaults).forEach(([k, v]) => seedSetting.run(k, v));

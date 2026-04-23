@@ -1122,6 +1122,21 @@
         }
       }
 
+      /* ===== SETTING TOKO TABS ===== */
+      .st-tab {
+        background: transparent;
+        color: #64748b;
+      }
+      .st-tab:hover {
+        background: #fff;
+        color: #1e293b;
+      }
+      .st-tab.active {
+        background: linear-gradient(135deg, #ea580c, #dc2626);
+        color: white;
+        box-shadow: 0 4px 14px -4px rgba(234, 88, 12, 0.5);
+      }
+
       /* ===== CONFIRM DIALOG (custom, replaces native confirm/prompt) ===== */
       #confirm-dialog { backdrop-filter: blur(6px); }
       #confirm-dialog.show .confirm-box {
@@ -2734,6 +2749,7 @@
         <div class="bg-gradient-to-br from-slate-50 to-violet-50 p-5 rounded-3xl border border-violet-100 mb-5 relative">
           <div class="bg-white p-3 rounded-2xl shadow-inner">
             <img
+              id="qris-image"
               src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=00020101021126630016ID.CO.QRIS.WWW01189360091200000000000215ID10253749414210303A0151039005204581253033605802ID5910YUMMY ROLL6006Bekasi61051751062070703A0163046C9E"
               alt="QRIS"
               class="w-full h-auto rounded-xl"
@@ -2926,8 +2942,9 @@
 
     <!-- ==================== SETTING TOKO MODAL ==================== -->
     <div id="setting-toko-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[110] p-4 backdrop-blur-sm">
-      <div class="bg-white w-full max-w-[480px] rounded-[24px] sm:rounded-[30px] p-5 sm:p-8 shadow-2xl max-h-[90vh] flex flex-col modal-content">
-        <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-100 modal-header-gradient">
+      <div class="bg-white w-full max-w-[560px] rounded-[24px] sm:rounded-[30px] shadow-2xl max-h-[92vh] flex flex-col modal-content overflow-hidden">
+        <!-- Header -->
+        <div class="flex justify-between items-center px-5 sm:px-7 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100">
           <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center shadow-lg shadow-slate-500/20">
               <span class="text-xl text-white">&#9881;</span>
@@ -2937,37 +2954,145 @@
               <p class="text-[10px] text-slate-400 font-bold tracking-widest">ADMIN ONLY</p>
             </div>
           </div>
-          <button onclick="closeSettingToko()" class="bg-slate-100 hover:bg-red-50 hover:text-red-500 p-3 rounded-xl transition-all text-slate-400 active:scale-90">
+          <button onclick="closeSettingToko()" class="bg-white hover:bg-red-50 hover:text-red-500 p-3 rounded-xl transition-all text-slate-400 active:scale-90 border border-slate-100">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto hide-scrollbar space-y-4">
-          <div>
-            <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Nama Toko</label>
-            <input type="text" id="st-nama-toko" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
-          </div>
-          <div>
-            <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Alamat</label>
-            <textarea id="st-alamat" rows="2" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all resize-none"></textarea>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
+        <!-- Tabs -->
+        <div class="flex gap-1 p-2 bg-slate-50 border-b border-slate-100 overflow-x-auto hide-scrollbar">
+          <button onclick="switchStTab('identitas')" data-st-tab="identitas" class="st-tab flex-shrink-0 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap">
+            &#127970; Identitas
+          </button>
+          <button onclick="switchStTab('operasional')" data-st-tab="operasional" class="st-tab flex-shrink-0 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap">
+            &#128336; Operasional
+          </button>
+          <button onclick="switchStTab('pajak')" data-st-tab="pajak" class="st-tab flex-shrink-0 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap">
+            &#128181; Pajak
+          </button>
+          <button onclick="switchStTab('pembayaran')" data-st-tab="pembayaran" class="st-tab flex-shrink-0 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap">
+            &#128179; Bayar
+          </button>
+          <button onclick="switchStTab('keamanan')" data-st-tab="keamanan" class="st-tab flex-shrink-0 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap">
+            &#128272; Keamanan
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto hide-scrollbar px-5 sm:px-7 py-5">
+          <!-- Tab: Identitas -->
+          <div class="st-panel space-y-4" data-st-panel="identitas">
             <div>
-              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">No. Telp</label>
-              <input type="text" id="st-telp" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Nama Toko</label>
+              <input type="text" id="st-nama-toko" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+            </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Alamat</label>
+              <textarea id="st-alamat" rows="2" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all resize-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">No. Telp</label>
+                <input type="text" id="st-telp" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Email</label>
+                <input type="email" id="st-email-toko" placeholder="cafe@example.com" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              </div>
+            </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Instagram <span class="text-slate-300 normal-case">(tanpa @)</span></label>
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">@</span>
+                <input type="text" id="st-instagram" placeholder="cafesoluna" class="w-full pl-8 pr-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              </div>
+            </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Logo URL <span class="text-slate-300 normal-case">(path gambar untuk struk)</span></label>
+              <input type="text" id="st-logo-url" placeholder="/public/soluna.png" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all font-mono" />
+              <img id="st-logo-preview" src="" alt="" class="mt-2 h-12 rounded-lg border border-slate-200 hidden" onerror="this.classList.add('hidden')" />
+            </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Footer Struk</label>
+              <input type="text" id="st-footer-struk" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+            </div>
+          </div>
+
+          <!-- Tab: Operasional -->
+          <div class="st-panel space-y-4 hidden" data-st-panel="operasional">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Jam Buka</label>
+                <input type="time" id="st-jam-buka" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Jam Tutup</label>
+                <input type="time" id="st-jam-tutup" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              </div>
             </div>
             <div>
               <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Target Harian (Rp)</label>
               <input type="number" id="st-target-harian" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              <p class="text-[10px] text-slate-400 mt-1">Target omzet harian untuk progress bar dashboard.</p>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-800">
+              <p class="font-black mb-1">&#128161; Info</p>
+              <p class="text-[11px] leading-relaxed">Jam buka/tutup tampil di struk & tampilan pelanggan. Kasir tetap bisa transaksi kapan saja.</p>
             </div>
           </div>
-          <div>
-            <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Footer Struk</label>
-            <input type="text" id="st-footer-struk" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+
+          <!-- Tab: Pajak & Biaya -->
+          <div class="st-panel space-y-4 hidden" data-st-panel="pajak">
+            <label class="flex items-center justify-between bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 cursor-pointer hover:border-orange-300 transition-all">
+              <div>
+                <span class="font-black text-sm text-slate-800 block">Aktifkan PPN</span>
+                <span class="text-[10px] text-slate-400">Tambahkan pajak otomatis ke setiap transaksi</span>
+              </div>
+              <input type="checkbox" id="st-pajak-aktif" class="w-5 h-5 accent-orange-500" />
+            </label>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Persentase PPN (%)</label>
+              <input type="number" id="st-pajak-persen" min="0" max="50" step="0.1" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              <p class="text-[10px] text-slate-400 mt-1">Default 11% (tarif PPN Indonesia 2022+)</p>
+            </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Service Charge (%)</label>
+              <input type="number" id="st-service-charge" min="0" max="30" step="0.1" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              <p class="text-[10px] text-slate-400 mt-1">Biaya pelayanan (0 = tidak dikenakan)</p>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-2xl p-3">
+              <p class="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-1">Preview Kalkulasi</p>
+              <div id="st-pajak-preview" class="text-xs text-slate-700 font-mono space-y-0.5"></div>
+            </div>
+          </div>
+
+          <!-- Tab: Pembayaran -->
+          <div class="st-panel space-y-4 hidden" data-st-panel="pembayaran">
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">QRIS URL / Path</label>
+              <input type="text" id="st-qris-url" placeholder="/public/qris.png.png" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all font-mono" />
+              <p class="text-[10px] text-slate-400 mt-1">Link/path gambar QRIS statis yang ditampilkan saat pembayaran</p>
+              <img id="st-qris-preview" src="" alt="" class="mt-2 h-36 rounded-xl border border-slate-200 hidden" onerror="this.classList.add('hidden')" />
+            </div>
+          </div>
+
+          <!-- Tab: Keamanan -->
+          <div class="st-panel space-y-4 hidden" data-st-panel="keamanan">
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Auto Logout Kasir (menit)</label>
+              <input type="number" id="st-auto-logout" min="0" max="240" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              <p class="text-[10px] text-slate-400 mt-1">Kasir otomatis logout kalau idle selama X menit. <b>0</b> = nonaktif.</p>
+            </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Alert Stok Habis (&le; X porsi)</label>
+              <input type="number" id="st-notif-stok" min="0" max="100" class="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 font-bold text-sm outline-none focus:border-orange-500 transition-all" />
+              <p class="text-[10px] text-slate-400 mt-1">Menu dengan stok &le; angka ini akan muncul badge merah di kasir.</p>
+            </div>
           </div>
         </div>
 
-        <div class="mt-5 pt-4 border-t border-slate-100">
+        <!-- Footer -->
+        <div class="px-5 sm:px-7 py-4 border-t border-slate-100 bg-slate-50">
           <button onclick="saveSettingToko()" class="btn-urban w-full text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg">
             &#128190; SIMPAN SETTING
           </button>
@@ -3159,7 +3284,7 @@
 
         <!-- Store Header -->
         <div class="text-center border-b border-dashed border-gray-300 pb-3 mb-3 uppercase">
-          <img src="/public/soluna.png" alt="Cafe Soluna" class="w-32 h-auto mx-auto mb-1 object-contain" />
+          <img id="receipt-logo" src="/public/soluna.png" alt="Logo" class="w-32 h-auto mx-auto mb-1 object-contain" onerror="this.style.display='none'" />
           <h2 id="receipt-store-name" class="text-sm font-bold text-slate-700">Cafe Soluna</h2>
           <p id="receipt-store-address" class="text-[8px] text-slate-400 normal-case"></p>
           <p id="receipt-store-telp" class="text-[8px] text-slate-400 normal-case"></p>
@@ -3181,6 +3306,8 @@
         <div id="receipt-subtotal-section" class="border-t border-dashed border-gray-200 pt-2 mb-1 text-[10px] space-y-0.5">
           <div id="receipt-subtotal-row" class="flex justify-between"><span>SUBTOTAL</span><span id="receipt-subtotal"></span></div>
           <div id="receipt-discount-row" class="hidden flex justify-between text-emerald-600 font-bold"><span id="receipt-discount-label">DISKON</span><span id="receipt-discount-amount"></span></div>
+          <div id="receipt-service-row" class="hidden flex justify-between text-slate-600"><span id="receipt-service-label">SERVICE</span><span id="receipt-service-amount"></span></div>
+          <div id="receipt-pajak-row" class="hidden flex justify-between text-slate-600"><span id="receipt-pajak-label">PPN</span><span id="receipt-pajak-amount"></span></div>
         </div>
 
         <!-- Total -->
@@ -3198,6 +3325,8 @@
         <!-- Footer -->
         <div class="text-center mt-4 mb-2 border-t border-dashed border-gray-200 pt-3">
           <p id="receipt-footer" class="text-[8px] text-slate-400 font-sans"></p>
+          <p id="receipt-ig" class="text-[8px] text-orange-500 font-bold font-sans mt-1 hidden"></p>
+          <p id="receipt-email" class="text-[8px] text-slate-400 font-sans hidden"></p>
           <p class="text-[7px] text-slate-300 mt-1 font-sans">Powered by Cafe Soluna POS</p>
         </div>
 
@@ -3548,7 +3677,33 @@
           document.getElementById("shift-display").classList.add("hidden");
         }
 
+        applyAutoLogout();
+
         showToast(`SELAMAT DATANG, ${currentUser.toUpperCase()}!`);
+      }
+
+      // ===== AUTO LOGOUT (idle) =====
+      let _autoLogoutTimer = null;
+      let _autoLogoutListenersAttached = false;
+      function applyAutoLogout() {
+        const menit = parseInt((window._settingToko || {}).auto_logout_menit) || 0;
+        if (!_autoLogoutListenersAttached) {
+          ["click","keydown","mousemove","touchstart","scroll"].forEach(ev =>
+            document.addEventListener(ev, resetAutoLogoutTimer, { passive: true })
+          );
+          _autoLogoutListenersAttached = true;
+        }
+        resetAutoLogoutTimer();
+        if (menit <= 0 && _autoLogoutTimer) { clearTimeout(_autoLogoutTimer); _autoLogoutTimer = null; }
+      }
+      function resetAutoLogoutTimer() {
+        const menit = parseInt((window._settingToko || {}).auto_logout_menit) || 0;
+        if (menit <= 0) return;
+        if (_autoLogoutTimer) clearTimeout(_autoLogoutTimer);
+        _autoLogoutTimer = setTimeout(() => {
+          showToast(`IDLE ${menit} MENIT — LOGOUT OTOMATIS`);
+          setTimeout(() => location.reload(), 1500);
+        }, menit * 60 * 1000);
       }
 
       async function doShiftClockIn() {
@@ -4018,9 +4173,11 @@
       // ===== RENDER MENU =====
       function renderMenu(data) {
         const grid = document.getElementById("menu-grid");
+        const lowThreshold = parseInt((window._settingToko || {}).notif_stok_habis) || 0;
         grid.innerHTML = data
           .map((item, index) => {
             const oos = item.stock <= 0;
+            const isLow = !oos && lowThreshold > 0 && item.stock <= lowThreshold;
             const emoji = categoryEmoji[item.category] || "&#127860;";
             return `
           <div onclick="${oos ? "" : `addToCart('${item.name.replace(/'/g, "\\'")}', ${item.price}, ${item.id})`}"
@@ -4034,7 +4191,9 @@
                 ${
                   oos
                     ? '<span class="text-[8px] bg-red-500 text-white px-2.5 py-1 rounded-full font-bold animate-pulse shadow-sm shadow-red-500/20">HABIS</span>'
-                    : `<span class="text-[8px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-bold border border-emerald-100">${item.stock} stok</span>`
+                    : isLow
+                      ? `<span class="text-[8px] bg-amber-500 text-white px-2.5 py-1 rounded-full font-bold animate-pulse shadow-sm shadow-amber-500/30">&#9888; ${item.stock} stok</span>`
+                      : `<span class="text-[8px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-bold border border-emerald-100">${item.stock} stok</span>`
                 }
               </div>
               <h4 class="menu-name font-extrabold text-slate-800 text-[11px] sm:text-xs uppercase leading-tight">${item.name}</h4>
@@ -4290,14 +4449,29 @@
         }
       }
 
+      // Hitung rincian transaksi (subtotal, diskon, service charge, pajak, total)
+      function calcTotals() {
+        const st = window._settingToko || {};
+        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const totalDiskon = (_diskonPoin || 0) + (_diskonManual || 0) + (_diskonPromo || 0);
+        const base = Math.max(0, subtotal - totalDiskon);
+        const svcPct = parseFloat(st.service_charge) || 0;
+        const pjkPct = parseFloat(st.pajak_persen) || 0;
+        const pjkAktif = st.pajak_aktif === "1" || st.pajak_aktif === true || st.pajak_aktif === 1;
+        const service = Math.round(base * svcPct / 100);
+        const pajak   = pjkAktif ? Math.round((base + service) * pjkPct / 100) : 0;
+        const total   = base + service + pajak;
+        return { subtotal, totalDiskon, base, service, pajak, total, svcPct, pjkPct, pjkAktif };
+      }
+
       function handleProcess() {
         if (!cart.length) return alert("KERANJANG KOSONG!");
-        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-        const totalDiskon = (_diskonPoin || 0) + _diskonManual + _diskonPromo;
-        const total = Math.max(0, subtotal - totalDiskon);
+        const { total } = calcTotals();
         if (selectedPayment === "QRIS") {
           document.getElementById("qris-total-display").innerText =
             `Rp ${total.toLocaleString("id-ID")}`;
+          const qUrl = (window._settingToko || {}).qris_statis_url;
+          if (qUrl) document.getElementById("qris-image").src = qUrl;
           document.getElementById("qris-overlay").classList.remove("hidden");
         } else {
           const received =
@@ -4316,9 +4490,7 @@
       }
 
       function completeTransaction(received) {
-        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-        const totalDiskon = (_diskonPoin || 0) + _diskonManual + _diskonPromo;
-        const total = Math.max(0, subtotal - totalDiskon);
+        const { subtotal, totalDiskon, service, pajak, total } = calcTotals();
         totalOmzet += total;
         const namaCustomer = document.getElementById("input-nama-customer").value.trim() || "Umum";
 
@@ -4376,11 +4548,14 @@
       // ===== RECEIPT =====
       function showStruk(received) {
         const st = window._settingToko || {};
-        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-        const totalDiskon = (_diskonPoin || 0) + (_diskonManual || 0) + (_diskonPromo || 0);
-        const total = Math.max(0, subtotal - totalDiskon);
+        const { subtotal, totalDiskon, service, pajak, total, svcPct, pjkPct, pjkAktif } = calcTotals();
         const namaCustomer = document.getElementById("input-nama-customer").value.trim() || "Umum";
         const receiptNo = "WU-" + Date.now().toString(36).toUpperCase();
+
+        // Logo
+        const logoEl = document.getElementById("receipt-logo");
+        logoEl.src = st.logo_url || "/public/soluna.png";
+        logoEl.style.display = "";
 
         // Store info
         document.getElementById("receipt-store-name").textContent = st.nama_toko || "Cafe Soluna";
@@ -4421,6 +4596,30 @@
           discountRow.style.display = "none";
         }
 
+        // Service charge
+        const svcRow = document.getElementById("receipt-service-row");
+        if (service > 0) {
+          svcRow.classList.remove("hidden");
+          svcRow.style.display = "flex";
+          document.getElementById("receipt-service-label").textContent = `SERVICE (${svcPct}%)`;
+          document.getElementById("receipt-service-amount").textContent = "+Rp " + service.toLocaleString("id-ID");
+        } else {
+          svcRow.classList.add("hidden");
+          svcRow.style.display = "none";
+        }
+
+        // Pajak
+        const pjkRow = document.getElementById("receipt-pajak-row");
+        if (pajak > 0) {
+          pjkRow.classList.remove("hidden");
+          pjkRow.style.display = "flex";
+          document.getElementById("receipt-pajak-label").textContent = `PPN (${pjkPct}%)`;
+          document.getElementById("receipt-pajak-amount").textContent = "+Rp " + pajak.toLocaleString("id-ID");
+        } else {
+          pjkRow.classList.add("hidden");
+          pjkRow.style.display = "none";
+        }
+
         // Total
         document.getElementById("receipt-total").textContent = "Rp " + total.toLocaleString("id-ID");
 
@@ -4436,6 +4635,20 @@
 
         // Footer
         document.getElementById("receipt-footer").textContent = st.footer_struk || "Terima kasih telah berkunjung!";
+        const igEl = document.getElementById("receipt-ig");
+        if (st.instagram) {
+          igEl.textContent = "@" + st.instagram.replace(/^@/, "");
+          igEl.classList.remove("hidden");
+        } else {
+          igEl.classList.add("hidden");
+        }
+        const emailEl = document.getElementById("receipt-email");
+        if (st.email_toko) {
+          emailEl.textContent = st.email_toko;
+          emailEl.classList.remove("hidden");
+        } else {
+          emailEl.classList.add("hidden");
+        }
 
         document.getElementById("modal-overlay").classList.remove("hidden");
       }
@@ -7193,6 +7406,26 @@
       }
 
       // ===== SETTING TOKO =====
+      function switchStTab(tab) {
+        document.querySelectorAll(".st-tab").forEach(b => b.classList.toggle("active", b.dataset.stTab === tab));
+        document.querySelectorAll(".st-panel").forEach(p => p.classList.toggle("hidden", p.dataset.stPanel !== tab));
+        if (tab === "pajak") updatePajakPreview();
+      }
+      function updatePajakPreview() {
+        const aktif = document.getElementById("st-pajak-aktif").checked;
+        const pajak = parseFloat(document.getElementById("st-pajak-persen").value) || 0;
+        const svc   = parseFloat(document.getElementById("st-service-charge").value) || 0;
+        const sample = 50000;
+        const svcAmt = Math.round(sample * svc / 100);
+        const pjkAmt = aktif ? Math.round((sample + svcAmt) * pajak / 100) : 0;
+        const total  = sample + svcAmt + pjkAmt;
+        document.getElementById("st-pajak-preview").innerHTML = `
+          <div>Subtotal: Rp ${sample.toLocaleString("id-ID")}</div>
+          ${svc > 0 ? `<div>Service (${svc}%): +Rp ${svcAmt.toLocaleString("id-ID")}</div>` : ""}
+          ${aktif ? `<div>PPN (${pajak}%): +Rp ${pjkAmt.toLocaleString("id-ID")}</div>` : ""}
+          <div class="font-black text-slate-900 pt-1 border-t border-slate-200 mt-1">Total: Rp ${total.toLocaleString("id-ID")}</div>
+        `;
+      }
       function openSettingToko() {
         const hak = window._hakAkses || [];
         if (!hak.includes("setting_toko")) return alert("AKSES DITOLAK.");
@@ -7200,11 +7433,45 @@
         modal.classList.remove("hidden");
         modal.classList.add("flex");
         const s = window._settingToko || {};
+        // Identitas
         document.getElementById("st-nama-toko").value = s.nama_toko || "";
         document.getElementById("st-alamat").value = s.alamat || "";
         document.getElementById("st-telp").value = s.telp || "";
-        document.getElementById("st-target-harian").value = s.target_harian || "500000";
+        document.getElementById("st-email-toko").value = s.email_toko || "";
+        document.getElementById("st-instagram").value = (s.instagram || "").replace(/^@/, "");
+        document.getElementById("st-logo-url").value = s.logo_url || "";
         document.getElementById("st-footer-struk").value = s.footer_struk || "";
+        const lp = document.getElementById("st-logo-preview");
+        if (s.logo_url) { lp.src = s.logo_url; lp.classList.remove("hidden"); } else { lp.classList.add("hidden"); }
+        // Operasional
+        document.getElementById("st-jam-buka").value = s.jam_buka || "07:00";
+        document.getElementById("st-jam-tutup").value = s.jam_tutup || "23:00";
+        document.getElementById("st-target-harian").value = s.target_harian || "500000";
+        // Pajak
+        document.getElementById("st-pajak-aktif").checked = s.pajak_aktif === "1" || s.pajak_aktif === true;
+        document.getElementById("st-pajak-persen").value = s.pajak_persen || "11";
+        document.getElementById("st-service-charge").value = s.service_charge || "0";
+        // Pembayaran
+        document.getElementById("st-qris-url").value = s.qris_statis_url || "";
+        const qp = document.getElementById("st-qris-preview");
+        if (s.qris_statis_url) { qp.src = s.qris_statis_url; qp.classList.remove("hidden"); } else { qp.classList.add("hidden"); }
+        // Keamanan
+        document.getElementById("st-auto-logout").value = s.auto_logout_menit || "30";
+        document.getElementById("st-notif-stok").value = s.notif_stok_habis || "5";
+        // Default tab + bind live preview
+        switchStTab("identitas");
+        ["st-pajak-aktif","st-pajak-persen","st-service-charge"].forEach(id => {
+          document.getElementById(id).oninput = updatePajakPreview;
+          document.getElementById(id).onchange = updatePajakPreview;
+        });
+        document.getElementById("st-logo-url").oninput = (e) => {
+          const img = document.getElementById("st-logo-preview");
+          img.src = e.target.value; img.classList.toggle("hidden", !e.target.value);
+        };
+        document.getElementById("st-qris-url").oninput = (e) => {
+          const img = document.getElementById("st-qris-preview");
+          img.src = e.target.value; img.classList.toggle("hidden", !e.target.value);
+        };
       }
       function closeSettingToko() {
         const modal = document.getElementById("setting-toko-modal");
@@ -7212,12 +7479,24 @@
         modal.classList.remove("flex");
       }
       async function saveSettingToko() {
+        const ig = document.getElementById("st-instagram").value.trim().replace(/^@/, "");
         const settings = {
           nama_toko: document.getElementById("st-nama-toko").value.trim(),
           alamat: document.getElementById("st-alamat").value.trim(),
           telp: document.getElementById("st-telp").value.trim(),
-          target_harian: document.getElementById("st-target-harian").value.trim(),
+          email_toko: document.getElementById("st-email-toko").value.trim(),
+          instagram: ig,
+          logo_url: document.getElementById("st-logo-url").value.trim(),
           footer_struk: document.getElementById("st-footer-struk").value.trim(),
+          jam_buka: document.getElementById("st-jam-buka").value,
+          jam_tutup: document.getElementById("st-jam-tutup").value,
+          target_harian: document.getElementById("st-target-harian").value.trim(),
+          pajak_aktif: document.getElementById("st-pajak-aktif").checked ? "1" : "0",
+          pajak_persen: document.getElementById("st-pajak-persen").value.trim() || "0",
+          service_charge: document.getElementById("st-service-charge").value.trim() || "0",
+          qris_statis_url: document.getElementById("st-qris-url").value.trim(),
+          auto_logout_menit: document.getElementById("st-auto-logout").value.trim() || "0",
+          notif_stok_habis: document.getElementById("st-notif-stok").value.trim() || "0",
         };
         try {
           const res = await fetch("/api/setting-toko", {
@@ -7227,9 +7506,11 @@
           });
           const data = await res.json();
           if (!data.success) return alert(data.pesan || "Gagal!");
-          window._settingToko = settings;
+          window._settingToko = { ...(window._settingToko || {}), ...settings };
           closeSettingToko();
           showToast("SETTING TERSIMPAN!");
+          if (typeof applyAutoLogout === "function") applyAutoLogout();
+          if (typeof renderMenu === "function") renderMenu();
           if (typeof renderAdminDashboard === 'function') renderAdminDashboard();
         } catch (e) {
           alert("Gagal terhubung ke server!");
