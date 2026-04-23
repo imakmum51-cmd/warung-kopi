@@ -1122,6 +1122,54 @@
         }
       }
 
+      /* ===== CONFIRM DIALOG (custom, replaces native confirm/prompt) ===== */
+      #confirm-dialog { backdrop-filter: blur(6px); }
+      #confirm-dialog.show .confirm-box {
+        animation: confirmPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      #confirm-dialog.show .confirm-icon-wrap {
+        animation: iconShake 0.8s cubic-bezier(0.36, 0.07, 0.19, 0.97) 0.25s;
+      }
+      #confirm-dialog.show .confirm-icon-wrap::before {
+        animation: dangerRing 1.8s ease-out infinite 0.8s;
+      }
+      @keyframes confirmPop {
+        0%   { opacity: 0; transform: scale(0.7) translateY(40px); }
+        60%  { opacity: 1; transform: scale(1.04) translateY(-4px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
+      }
+      @keyframes iconShake {
+        0%, 100%     { transform: rotate(0deg); }
+        10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+        20%, 40%, 60%, 80%      { transform: rotate(10deg); }
+      }
+      @keyframes dangerRing {
+        0%   { transform: scale(1);   opacity: 0.7; }
+        100% { transform: scale(1.8); opacity: 0; }
+      }
+      .confirm-icon-wrap {
+        position: relative;
+      }
+      .confirm-icon-wrap::before {
+        content: ""; position: absolute; inset: 0; border-radius: 9999px;
+        border: 3px solid rgba(239, 68, 68, 0.55); z-index: -1;
+      }
+      #confirm-input.match {
+        border-color: #dc2626 !important;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15), 0 8px 24px -8px rgba(220, 38, 38, 0.4);
+        background: linear-gradient(180deg, #fff, #fef2f2);
+      }
+      .confirm-ok-btn:disabled {
+        opacity: 0.4; cursor: not-allowed; filter: grayscale(0.5);
+      }
+      .confirm-ok-btn:not(:disabled) {
+        animation: dangerGlow 2s ease-in-out infinite;
+      }
+      @keyframes dangerGlow {
+        0%, 100% { box-shadow: 0 10px 30px -5px rgba(220, 38, 38, 0.4); }
+        50%      { box-shadow: 0 10px 40px -2px rgba(220, 38, 38, 0.75); }
+      }
+
       /* Readability boost: enlarge tiny fonts in login + main POS (modals untouched) */
       #main-pos .text-\[8px\],
       #login-screen .text-\[8px\]  { font-size: 11.5px !important; letter-spacing: 0.04em !important; }
@@ -2950,6 +2998,45 @@
           </div>
         </div>
         <div id="audit-log-content" class="flex-1 overflow-y-auto hide-scrollbar"></div>
+      </div>
+    </div>
+
+    <!-- ==================== CONFIRM DIALOG (custom, replaces native confirm/prompt) ==================== -->
+    <div id="confirm-dialog" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[200] p-4">
+      <div class="confirm-box bg-white w-full max-w-[420px] rounded-[28px] p-7 shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-gradient-to-br from-red-100 to-rose-200 opacity-60 pointer-events-none"></div>
+        <div class="absolute -bottom-20 -left-20 w-52 h-52 rounded-full bg-gradient-to-tr from-rose-100 to-orange-100 opacity-50 pointer-events-none"></div>
+
+        <div class="relative flex flex-col items-center text-center">
+          <div class="confirm-icon-wrap w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-rose-700 flex items-center justify-center shadow-2xl shadow-red-500/40 mb-5">
+            <span class="text-4xl">&#128465;</span>
+          </div>
+
+          <h3 id="confirm-title" class="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">Reset Audit Log?</h3>
+          <p id="confirm-message" class="text-sm text-slate-500 font-medium leading-relaxed mb-5 px-2">
+            Semua riwayat aksi akan dihapus permanen.<br/>Tindakan ini <span class="text-red-600 font-bold">tidak bisa dibatalkan</span>.
+          </p>
+
+          <div id="confirm-input-wrap" class="w-full mb-5 hidden">
+            <p class="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-2 text-left">
+              Ketik <span id="confirm-keyword" class="text-red-600">"RESET"</span> untuk konfirmasi
+            </p>
+            <input id="confirm-input" type="text" autocomplete="off" spellcheck="false"
+              class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-red-500 focus:outline-none font-black text-center text-slate-800 tracking-[0.3em] uppercase text-lg transition-all bg-slate-50"
+              placeholder="—" />
+          </div>
+
+          <div class="flex w-full gap-3">
+            <button id="confirm-cancel-btn" type="button"
+              class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95">
+              Batal
+            </button>
+            <button id="confirm-ok-btn" type="button" disabled
+              class="confirm-ok-btn flex-1 bg-gradient-to-br from-red-500 to-rose-700 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95">
+              <span id="confirm-ok-label">Hapus</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -7340,12 +7427,80 @@
         modal.classList.add("hidden");
         modal.classList.remove("flex");
       }
+      // ===== CUSTOM CONFIRM DIALOG (replaces native confirm/prompt) =====
+      function showConfirm(opts) {
+        return new Promise((resolve) => {
+          const dialog   = document.getElementById("confirm-dialog");
+          const titleEl  = document.getElementById("confirm-title");
+          const msgEl    = document.getElementById("confirm-message");
+          const okBtn    = document.getElementById("confirm-ok-btn");
+          const cancelBtn= document.getElementById("confirm-cancel-btn");
+          const okLabel  = document.getElementById("confirm-ok-label");
+          const inputWrap= document.getElementById("confirm-input-wrap");
+          const input    = document.getElementById("confirm-input");
+          const kwEl     = document.getElementById("confirm-keyword");
+
+          titleEl.textContent = opts.title || "Konfirmasi?";
+          msgEl.innerHTML     = opts.message || "";
+          okLabel.textContent = opts.okText || "Ya, Lanjutkan";
+          cancelBtn.textContent = opts.cancelText || "Batal";
+
+          const keyword = (opts.keyword || "").trim();
+          if (keyword) {
+            inputWrap.classList.remove("hidden");
+            kwEl.textContent = `"${keyword}"`;
+            input.value = "";
+            input.classList.remove("match");
+            okBtn.disabled = true;
+          } else {
+            inputWrap.classList.add("hidden");
+            okBtn.disabled = false;
+          }
+
+          dialog.classList.remove("hidden");
+          dialog.classList.add("flex", "show");
+          setTimeout(() => { if (keyword) input.focus(); }, 300);
+
+          const cleanup = (result) => {
+            dialog.classList.add("hidden");
+            dialog.classList.remove("flex", "show");
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            input.oninput = null;
+            input.onkeydown = null;
+            document.removeEventListener("keydown", onEsc);
+            resolve(result);
+          };
+          const onEsc = (e) => { if (e.key === "Escape") cleanup(false); };
+          document.addEventListener("keydown", onEsc);
+
+          cancelBtn.onclick = () => cleanup(false);
+          okBtn.onclick     = () => { if (!okBtn.disabled) cleanup(true); };
+
+          if (keyword) {
+            input.oninput = () => {
+              const match = input.value.trim().toUpperCase() === keyword.toUpperCase();
+              okBtn.disabled = !match;
+              input.classList.toggle("match", match);
+            };
+            input.onkeydown = (e) => {
+              if (e.key === "Enter" && !okBtn.disabled) cleanup(true);
+            };
+          }
+        });
+      }
+
       async function resetAuditLog() {
         const hak = window._hakAkses || [];
         if (!hak.includes("audit_log")) return alert("AKSES DITOLAK.");
-        if (!confirm("Hapus SEMUA riwayat audit log?\n\nData yang dihapus tidak bisa dikembalikan.")) return;
-        const ketik = prompt('Ketik "RESET" untuk konfirmasi:');
-        if ((ketik || "").trim().toUpperCase() !== "RESET") return;
+        const ok = await showConfirm({
+          title: "Reset Audit Log?",
+          message: 'Semua riwayat aksi akan dihapus permanen.<br/>Tindakan ini <span class="text-red-600 font-bold">tidak bisa dibatalkan</span>.',
+          keyword: "RESET",
+          okText: "Hapus Semua",
+          cancelText: "Batal",
+        });
+        if (!ok) return;
         const btn = document.getElementById("audit-reset-btn");
         if (btn) { btn.disabled = true; btn.innerHTML = "Menghapus..."; }
         try {
