@@ -46,6 +46,7 @@ const HAK_AKSES = {
     "void",
     "reset_omzet",
     "audit_log",
+    "admin_db",
   ],
   owner: [
     "transaksi",
@@ -1788,6 +1789,177 @@ app.delete("/api/audit-log", (req, res) => {
   try { db.prepare("DELETE FROM sqlite_sequence WHERE name = 'audit_log'").run(); } catch (e) {}
   logAudit(user, role, "reset_audit_log", `${totalDihapus} baris riwayat dihapus`);
   res.json({ success: true, dihapus: totalDihapus });
+});
+
+// ============================================
+// ADMIN DATABASE BROWSER (phpMyAdmin-like, khusus admin)
+// ============================================
+function requireAdmin(req, res) {
+  const role = req.headers["x-role"];
+  if (role !== "admin") {
+    res.status(403).json({ success: false, pesan: "Hanya admin yang boleh akses database." });
+    return false;
+  }
+  return true;
+}
+function getUserTables() {
+  return db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(r => r.name);
+}
+function assertValidTable(tableName) {
+  if (!getUserTables().includes(tableName)) throw new Error("Tabel tidak dikenal: " + tableName);
+}
+function getTableColumns(tableName) {
+  assertValidTable(tableName);
+  return db.prepare(`PRAGMA table_info(${tableName})`).all();
+}
+
+// Daftar tabel + jumlah baris
+app.get("/api/admin-db/tables", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const tables = getUserTables().map(name => {
+    const count = db.prepare(`SELECT COUNT(*) as c FROM ${name}`).get().c;
+    return { name, rows: count };
+  });
+  res.json({ success: true, data: tables });
+});
+
+// Schema tabel (kolom + tipe)
+app.get("/api/admin-db/schema/:table", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const cols = getTableColumns(req.params.table);
+    res.json({ success: true, data: cols });
+  } catch (e) {
+    res.status(400).json({ success: false, pesan: e.message });
+  }
+});
+
+// Browse baris dengan pagination + search
+app.get("/api/admin-db/table/:table", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const table = req.params.table;
+    assertValidTable(table);
+    const cols = getTableColumns(table).map(c => c.name);
+    const limit  = Math.min(parseInt(req.query.limit) || 50, 500);
+    const offset = parseInt(req.query.offset) || 0;
+    const q      = (req.query.q || "").trim();
+    let where = "";
+    let params = [];
+    if (q) {
+      const likeClauses = cols.map(c => `CAST(${c} AS TEXT) LIKE ?`).join(" OR ");
+      where = `WHERE ${likeClauses}`;
+      params = cols.map(() => `%${q}%`);
+    }
+    const orderCol = cols.includes("id") ? "id" : cols[0];
+    const rows = db.prepare(`SELECT * FROM ${table} ${where} ORDER BY ${orderCol} DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+    const total = db.prepare(`SELECT COUNT(*) as c FROM ${table} ${where}`).get(...params).c;
+    res.json({ success: true, data: rows, total, columns: cols });
+  } catch (e) {
+    res.status(400).json({ success: false, pesan: e.message });
+  }
+});
+
+// Tambah baris
+app.post("/api/admin-db/row/:table", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const table = req.params.table;
+    const cols = getTableColumns(table);
+    const editableCols = cols.filter(c => !(c.pk && c.type.toUpperCase().includes("INT"))); // skip autoinc PK
+    const data = req.body || {};
+    const usedCols = editableCols.filter(c => data[c.name] !== undefined).map(c => c.name);
+    if (!usedCols.length) return res.status(400).json({ success: false, pesan: "Tidak ada data." });
+    const placeholders = usedCols.map(() => "?").join(",");
+    const values = usedCols.map(c => data[c]);
+    const info = db.prepare(`INSERT INTO ${table} (${usedCols.join(",")}) VALUES (${placeholders})`).run(...values);
+    logAudit(req.headers["x-user"] || "admin", "admin", "admin_db_insert", `INSERT INTO ${table}, id=${info.lastInsertRowid}`);
+    res.json({ success: true, id: info.lastInsertRowid });
+  } catch (e) {
+    res.status(400).json({ success: false, pesan: e.message });
+  }
+});
+
+// Update baris (by id)
+app.put("/api/admin-db/row/:table/:id", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const table = req.params.table;
+    const cols = getTableColumns(table);
+    const colNames = cols.map(c => c.name);
+    if (!colNames.includes("id")) return res.status(400).json({ success: false, pesan: "Tabel tidak punya kolom 'id', edit tidak didukung." });
+    const data = req.body || {};
+    const usedCols = colNames.filter(c => c !== "id" && data[c] !== undefined);
+    if (!usedCols.length) return res.status(400).json({ success: false, pesan: "Tidak ada perubahan." });
+    const setClause = usedCols.map(c => `${c} = ?`).join(", ");
+    const values = usedCols.map(c => data[c]);
+    const info = db.prepare(`UPDATE ${table} SET ${setClause} WHERE id = ?`).run(...values, req.params.id);
+    logAudit(req.headers["x-user"] || "admin", "admin", "admin_db_update", `UPDATE ${table} id=${req.params.id} (${info.changes} baris)`);
+    res.json({ success: true, changes: info.changes });
+  } catch (e) {
+    res.status(400).json({ success: false, pesan: e.message });
+  }
+});
+
+// Hapus baris (by id)
+app.delete("/api/admin-db/row/:table/:id", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const table = req.params.table;
+    assertValidTable(table);
+    const cols = getTableColumns(table).map(c => c.name);
+    if (!cols.includes("id")) return res.status(400).json({ success: false, pesan: "Tabel tidak punya kolom 'id'." });
+    const info = db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(req.params.id);
+    logAudit(req.headers["x-user"] || "admin", "admin", "admin_db_delete", `DELETE FROM ${table} id=${req.params.id}`);
+    res.json({ success: true, changes: info.changes });
+  } catch (e) {
+    res.status(400).json({ success: false, pesan: e.message });
+  }
+});
+
+// Export tabel ke CSV
+app.get("/api/admin-db/export/:table", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const table = req.params.table;
+    assertValidTable(table);
+    const rows = db.prepare(`SELECT * FROM ${table}`).all();
+    if (!rows.length) { res.type("text/csv").send(""); return; }
+    const cols = Object.keys(rows[0]);
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v).replace(/"/g, '""');
+      return /[",\n\r]/.test(s) ? `"${s}"` : s;
+    };
+    const csv = [cols.join(","), ...rows.map(r => cols.map(c => escape(r[c])).join(","))].join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${table}.csv"`);
+    res.send(csv);
+  } catch (e) {
+    res.status(400).json({ success: false, pesan: e.message });
+  }
+});
+
+// Jalankan SQL custom (SELECT saja untuk keamanan)
+app.post("/api/admin-db/query", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const sql = (req.body?.sql || "").trim();
+  if (!sql) return res.status(400).json({ success: false, pesan: "Query kosong." });
+  // Hanya izinkan SELECT/PRAGMA/EXPLAIN — blok perintah destruktif
+  const firstWord = sql.split(/\s+/)[0].toUpperCase();
+  const allowed = ["SELECT", "PRAGMA", "EXPLAIN", "WITH"];
+  if (!allowed.includes(firstWord)) {
+    return res.status(400).json({ success: false, pesan: "Hanya query SELECT / PRAGMA / EXPLAIN / WITH yang diizinkan. Untuk edit data, pakai tombol di tabel." });
+  }
+  if (/;\s*\S/.test(sql)) return res.status(400).json({ success: false, pesan: "Satu query saja — titik koma di tengah tidak diizinkan." });
+  try {
+    const stmt = db.prepare(sql);
+    const rows = stmt.all();
+    logAudit(req.headers["x-user"] || "admin", "admin", "admin_db_query", sql.slice(0, 200));
+    res.json({ success: true, data: rows, rowCount: rows.length });
+  } catch (e) {
+    res.status(400).json({ success: false, pesan: e.message });
+  }
 });
 
 // VAPID public key untuk client
